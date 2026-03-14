@@ -71,8 +71,14 @@ export default function AddPlant() {
                     </div>
                     
                     <div className="text-[10px] text-stone-500 space-y-1 mt-2">
-                      <p><span className="font-bold text-[#5A8F5A]">✓ Goed met:</span> {plant.goodNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Alles'}</p>
-                      <p><span className="font-bold text-red-400">✗ Slecht met:</span> {plant.badNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Niets'}</p>
+                      <p><span className="font-bold text-[#5A8F5A]">✓ Goed met:</span> {plant.goodNeighbors.map(id => {
+                        const p = getPlant(id);
+                        return p ? `${p.icon} ${p.name}` : null;
+                      }).filter(Boolean).join(', ') || 'Alles'}</p>
+                      <p><span className="font-bold text-red-400">✗ Slecht met:</span> {plant.badNeighbors.map(id => {
+                        const p = getPlant(id);
+                        return p ? `${p.icon} ${p.name}` : null;
+                      }).filter(Boolean).join(', ') || 'Niets'}</p>
                     </div>
                   </button>
                 ))}

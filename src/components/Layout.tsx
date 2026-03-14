@@ -1,16 +1,29 @@
+import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { Home, ListTodo, BarChart2, Settings, Plus, Leaf } from 'lucide-react';
+import { Home, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { format } from 'date-fns';
+import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
+  const { currentUser, tasks, logs, grid, users } = useStore();
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+
+  const activeTasks = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id));
+  const activeTasksCount = activeTasks.length;
+  const recentActivities = logs.filter(l => l.userId !== currentUser?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
+  const getUser = (id: string | null) => users.find(u => u.id === id);
+
   const navItemsLeft = [
-    { to: '/', icon: Home, label: 'Garden' },
-    { to: '/tasks', icon: ListTodo, label: 'Tasks' },
+    { to: '/', icon: Home, label: 'Tuin' },
+    { to: '/tasks', icon: ListTodo, label: 'Taken' },
   ];
   
   const navItemsRight = [
-    { to: '/plants', icon: BarChart2, label: 'Insights' },
-    { to: '/profile', icon: Settings, label: 'Settings' },
+    { to: '/plants', icon: Sprout, label: 'Gewassen' },
+    { to: '/profile', icon: Settings, label: 'Instellingen' },
   ];
 
   const allNavItems = [...navItemsLeft, ...navItemsRight];
@@ -20,11 +33,25 @@ export default function Layout() {
       
       {/* Desktop/Tablet Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 shadow-sm z-50">
-        <div className="p-6 flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center text-[#5A8F5A]">
-            <Leaf className="w-6 h-6" />
+        <div className="p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center text-[#5A8F5A]">
+              <Leaf className="w-6 h-6" />
+            </div>
+            <span className="text-xl font-bold text-[#1A2E1A]">Moestuin</span>
           </div>
-          <span className="text-xl font-bold text-[#1A2E1A]">Moestuin</span>
+          
+          <button 
+            onClick={() => setIsNotificationsModalOpen(true)}
+            className="relative bg-stone-50 rounded-full p-2.5 hover:bg-stone-100 transition-colors"
+          >
+            <Bell className="w-5 h-5 text-stone-600" />
+            {activeTasksCount > 0 && (
+              <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                {activeTasksCount}
+              </span>
+            )}
+          </button>
         </div>
 
         <div className="px-6 mb-8">
@@ -48,7 +75,7 @@ export default function Layout() {
                 )
               }
             >
-              <item.icon className={cn("w-5 h-5", item.label === 'Garden' && "fill-current")} />
+              <item.icon className={cn("w-5 h-5", item.label === 'Tuin' && "fill-current")} />
               <span>{item.label}</span>
             </NavLink>
           ))}
@@ -60,57 +87,148 @@ export default function Layout() {
         <Outlet />
       </main>
 
+      {/* Mobile Floating Action Button (FAB) */}
+      <div className="md:hidden fixed bottom-24 right-6 z-40">
+        <Link to="/add" className="bg-[#5A8F5A] text-white p-4 rounded-2xl shadow-lg shadow-[#5A8F5A]/40 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center">
+          <Plus className="w-6 h-6" />
+        </Link>
+      </div>
+
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] z-50 rounded-t-3xl">
-        <div className="flex justify-between items-center h-20 max-w-md mx-auto px-6 relative">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] z-50">
+        <div className="flex justify-around items-center h-20 max-w-md mx-auto px-2 pb-safe">
           
-          {/* Left Items */}
-          <div className="flex space-x-8">
-            {navItemsLeft.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "flex flex-col items-center justify-center space-y-1 transition-colors w-12",
-                    isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
-                  )
-                }
-              >
-                <item.icon className={cn("w-6 h-6", item.label === 'Garden' && "fill-current")} />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
+          {navItemsLeft.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center justify-center space-y-1 w-16 transition-colors",
+                  isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
+                )
+              }
+            >
+              <item.icon className={cn("w-6 h-6", item.label === 'Tuin' && "fill-current")} />
+              <span className="text-[9px] font-bold uppercase tracking-wider truncate w-full text-center">{item.label}</span>
+            </NavLink>
+          ))}
 
-          {/* Center FAB */}
-          <div className="absolute left-1/2 -translate-x-1/2 -top-6">
-            <Link to="/add" className="bg-[#5A8F5A] text-white p-4 rounded-full shadow-lg shadow-[#5A8F5A]/30 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center">
-              <Plus className="w-8 h-8" />
-            </Link>
-          </div>
+          <button
+            onClick={() => setIsNotificationsModalOpen(true)}
+            className="flex flex-col items-center justify-center space-y-1 w-16 transition-colors text-stone-400 hover:text-[#5A8F5A] relative"
+          >
+            <div className="relative">
+              <Bell className="w-6 h-6" />
+              {activeTasksCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                  {activeTasksCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] font-bold uppercase tracking-wider truncate w-full text-center">Meldingen</span>
+          </button>
 
-          {/* Right Items */}
-          <div className="flex space-x-8">
-            {navItemsRight.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    "flex flex-col items-center justify-center space-y-1 transition-colors w-12",
-                    isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
-                  )
-                }
-              >
-                <item.icon className="w-6 h-6" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
+          {navItemsRight.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex flex-col items-center justify-center space-y-1 w-16 transition-colors",
+                  isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
+                )
+              }
+            >
+              <item.icon className="w-6 h-6" />
+              <span className="text-[9px] font-bold uppercase tracking-wider truncate w-full text-center">{item.label}</span>
+            </NavLink>
+          ))}
 
         </div>
       </nav>
+
+      {/* Notifications Modal */}
+      {isNotificationsModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col relative animate-in fade-in zoom-in-95 max-h-[80vh]">
+            <button 
+              onClick={() => setIsNotificationsModalOpen(false)}
+              className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-1">Meldingen</h2>
+            <p className="text-sm text-stone-500 mb-6">Taken en recente activiteiten</p>
+
+            <div className="flex-1 overflow-y-auto pr-2 no-scrollbar space-y-6">
+              {activeTasksCount > 0 ? (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Aan jou toegewezen taken</h3>
+                  <div className="space-y-3">
+                    {activeTasks.map(task => (
+                      <div key={task.id} className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                        <div className="flex items-start space-x-3">
+                          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                          <div>
+                            <p className="text-sm font-bold text-[#1A2E1A]">{task.title}</p>
+                            <p className="text-xs text-stone-600 mt-1">{task.description}</p>
+                            <p className="text-[10px] font-bold text-red-600 mt-2 uppercase tracking-wider">
+                              Vervalt: {format(new Date(task.dueDate), 'd MMMM yyyy', { locale: nl })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Aan jou toegewezen taken</h3>
+                  <p className="text-sm text-stone-500 italic">Je hebt geen openstaande taken.</p>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Recente Activiteit (Anderen)</h3>
+                {recentActivities.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentActivities.map(log => {
+                      const logUser = getUser(log.userId);
+                      const relatedCell = grid.find(c => c.id === log.cellId);
+                      const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
+                      return (
+                        <div key={log.id} className="flex items-center space-x-3 bg-[#F5F7F4] p-3 rounded-xl border border-stone-100">
+                          {logUser?.avatar ? (
+                            <img src={logUser.avatar} alt="" className="w-8 h-8 rounded-full" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#E8F0E8] flex items-center justify-center text-xs font-bold text-[#5A8F5A]">
+                              {logUser?.name?.charAt(0) || '?'}
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-[#1A2E1A]">{logUser?.name} heeft actie '{log.type}' uitgevoerd</p>
+                            <p className="text-[10px] text-stone-500">In vak {cellName} • {format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-stone-500 italic">Geen recente activiteit van anderen.</p>
+                )}
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setIsNotificationsModalOpen(false)}
+              className="mt-6 w-full py-3 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors"
+            >
+              Sluiten
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

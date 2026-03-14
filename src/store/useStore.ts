@@ -57,19 +57,24 @@ export interface User {
 export interface SeedInventory {
   plantId: string;
   quantity: number; // e.g., grams or seeds
+  unit?: 'stuks' | 'gram';
 }
 
 export interface GrowthLog {
   id: string;
   cellId: string;
   date: string;
+  type: 'Planten' | 'Wateren' | 'Notitie' | 'Oogst' | 'Ompoten' | 'Verwijderd' | 'Overig';
   note: string;
+  userId: string | null;
   imageUrl?: string;
 }
 
 interface AppState {
   plants: Plant[];
   grid: GridCell[];
+  gridWidth: number;
+  gridHeight: number;
   tasks: Task[];
   users: User[];
   families: FamilyGroup[];
@@ -80,11 +85,16 @@ interface AppState {
   
   // Actions
   setGridCell: (cellId: string, updates: Partial<GridCell>) => void;
+  updateGridSize: (width: number, height: number) => { success: boolean; message?: string };
   addTask: (task: Omit<Task, 'id'>) => void;
+  addPlant: (plant: Omit<Plant, 'id'>) => string;
+  updatePlant: (id: string, updates: Partial<Plant>) => void;
+  deletePlant: (id: string) => void;
+  addSeed: (seed: SeedInventory) => void;
   toggleTask: (taskId: string) => void;
   setVacationMode: (active: boolean) => void;
   addLog: (log: Omit<GrowthLog, 'id'>) => void;
-  addFamily: (name: string) => void;
+  addFamily: (name: string) => string;
   updateFamily: (id: string, name: string) => void;
   deleteFamily: (id: string) => void;
   updateUserFamily: (userId: string, familyId: string) => void;
@@ -92,6 +102,7 @@ interface AppState {
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  importData: (data: Partial<AppState>) => void;
 }
 
 // Mock Data
@@ -141,9 +152,11 @@ for (let y = 0; y < 4; y++) {
   }
 }
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   plants: MOCK_PLANTS,
   grid: initialGrid,
+  gridWidth: 4,
+  gridHeight: 4,
   tasks: [
     { id: 't1', title: 'Tomaten water geven', description: 'Het is warm, extra water nodig.', dueDate: format(new Date(), 'yyyy-MM-dd'), completed: false, assignedTo: 'u1', relatedCellId: 'c-0-0', type: 'Water' },
     { id: 't2', title: 'Wortels uitdunnen', description: 'Zorg voor 5cm ruimte tussen de wortels.', dueDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), completed: false, assignedTo: 'u2', relatedCellId: 'c-0-1', type: 'Overig' },
@@ -161,10 +174,78 @@ export const useStore = create<AppState>((set) => ({
   setGridCell: (cellId, updates) => set((state) => ({
     grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
   })),
+
+  updateGridSize: (width, height) => {
+    const state = get();
+    if (width < 1 || height < 1) return { success: false, message: 'Grid moet minimaal 1x1 zijn.' };
+
+    if (width < state.gridWidth) {
+      const hasPlants = state.grid.some(c => c.x >= width && c.plantId !== null);
+      if (hasPlants) return { success: false, message: 'Verwijder eerst de planten uit de kolommen die je wilt verwijderen.' };
+    }
+    if (height < state.gridHeight) {
+      const hasPlants = state.grid.some(c => c.y >= height && c.plantId !== null);
+      if (hasPlants) return { success: false, message: 'Verwijder eerst de planten uit de rijen die je wilt verwijderen.' };
+    }
+
+    let newGrid = state.grid.filter(c => c.x < width && c.y < height);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!newGrid.some(c => c.x === x && c.y === y)) {
+          newGrid.push({
+            id: `c-${x}-${y}`,
+            x,
+            y,
+            plantId: null,
+            plantedDate: null,
+            plantedBy: null,
+            plantType: null,
+            sunExposure: 'Zon',
+            history: [],
+          });
+        }
+      }
+    }
+
+    set({ gridWidth: width, gridHeight: height, grid: newGrid });
+    return { success: true };
+  },
   
   addTask: (task) => set((state) => ({
     tasks: [...state.tasks, { ...task, id: `t-${Date.now()}` }]
   })),
+
+  addPlant: (plant) => {
+    const id = `p-${Date.now()}`;
+    set((state) => ({
+      plants: [...state.plants, { ...plant, id }]
+    }));
+    return id;
+  },
+
+  updatePlant: (id, updates) => set((state) => ({
+    plants: state.plants.map(p => p.id === id ? { ...p, ...updates } : p)
+  })),
+
+  deletePlant: (id) => set((state) => ({
+    plants: state.plants.filter(p => p.id !== id),
+    // Optionally clean up grid cells and seedBox
+    grid: state.grid.map(c => c.plantId === id ? { ...c, plantId: null, plantType: null, plantedDate: null, plantedBy: null } : c),
+    seedBox: state.seedBox.filter(s => s.plantId !== id)
+  })),
+
+  addSeed: (seed) => set((state) => {
+    const existing = state.seedBox.find(s => s.plantId === seed.plantId);
+    if (existing) {
+      return {
+        seedBox: state.seedBox.map(s => s.plantId === seed.plantId 
+          ? { ...s, quantity: s.quantity + seed.quantity, unit: seed.unit || s.unit } 
+          : s)
+      };
+    }
+    return { seedBox: [...state.seedBox, seed] };
+  }),
   
   toggleTask: (taskId) => set((state) => ({
     tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
@@ -176,9 +257,22 @@ export const useStore = create<AppState>((set) => ({
     logs: [...state.logs, { ...log, id: `l-${Date.now()}` }]
   })),
 
-  addFamily: (name) => set((state) => ({
-    families: [...state.families, { id: `f-${Date.now()}`, name }]
-  })),
+  addFamily: (name) => {
+    const id = `f-${Date.now()}`;
+    set((state) => {
+      const newFamilies = [...state.families, { id, name }];
+      let newUsers = state.users;
+      let newCurrentUser = state.currentUser;
+      
+      if (state.currentUser) {
+        newUsers = state.users.map(u => u.id === state.currentUser!.id ? { ...u, familyId: id } : u);
+        newCurrentUser = { ...state.currentUser, familyId: id };
+      }
+      
+      return { families: newFamilies, users: newUsers, currentUser: newCurrentUser };
+    });
+    return id;
+  },
 
   updateFamily: (id, name) => set((state) => ({
     families: state.families.map(f => f.id === id ? { ...f, name } : f)
@@ -214,5 +308,10 @@ export const useStore = create<AppState>((set) => ({
   deleteUser: (id) => set((state) => ({
     users: state.users.filter(u => u.id !== id),
     currentUser: state.currentUser?.id === id ? null : state.currentUser
+  })),
+
+  importData: (data) => set((state) => ({
+    ...state,
+    ...data
   })),
 }));

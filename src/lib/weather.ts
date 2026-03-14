@@ -13,6 +13,7 @@ export interface WeatherData {
     maxTemp: number;
     minTemp: number;
     rainSum: number;
+    weatherCode: number;
   }[];
 }
 
@@ -39,11 +40,12 @@ export function useWeather() {
         const currentCode = data.current.weather_code;
         const isRaining = currentCode >= 50 && currentCode <= 69;
 
-        const forecast = data.daily.time.slice(0, 3).map((time: string, i: number) => ({
+        const forecast = data.daily.time.slice(0, 7).map((time: string, i: number) => ({
           date: time,
           maxTemp: data.daily.temperature_2m_max[i],
           minTemp: data.daily.temperature_2m_min[i],
           rainSum: data.daily.precipitation_sum[i],
+          weatherCode: data.daily.weather_code[i],
         }));
 
         setWeather({

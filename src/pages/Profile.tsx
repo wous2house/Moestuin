@@ -1,12 +1,57 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useStore } from '../store/useStore';
-import { User, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash2 } from 'lucide-react';
+import { User, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash2, Camera, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function Profile() {
-  const { currentUser, users, families, vacationMode, setVacationMode, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser } = useStore();
+  const { currentUser, users, families, vacationMode, setVacationMode, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dataInputRef = useRef<HTMLInputElement>(null);
   const [isAddingFamily, setIsAddingFamily] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
+  
+  const handleExportData = () => {
+    const state = useStore.getState();
+    const dataToExport = {
+      plants: state.plants,
+      grid: state.grid,
+      gridWidth: state.gridWidth,
+      gridHeight: state.gridHeight,
+      tasks: state.tasks,
+      users: state.users,
+      families: state.families,
+      seedBox: state.seedBox,
+      logs: state.logs,
+      vacationMode: state.vacationMode
+    };
+    const jsonString = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `moestuin_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        try {
+          const importedData = JSON.parse(reader.result as string);
+          importData(importedData);
+          alert('Database succesvol geïmporteerd!');
+        } catch (error) {
+          alert('Ongeldig JSON bestand.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
   
   const [isEditingFamily, setIsEditingFamily] = useState(false);
   const [editFamilyName, setEditFamilyName] = useState('');
@@ -24,6 +69,17 @@ export default function Profile() {
 
   const currentFamily = families.find(f => f.id === currentUser?.familyId);
   const familyMembers = users.filter(u => u.familyId === currentUser?.familyId);
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && currentUser) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateUser(currentUser.id, { avatar: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleAddFamily = () => {
     if (newFamilyName.trim()) {
@@ -89,29 +145,22 @@ export default function Profile() {
           {/* Left Column: User Info & Actions */}
           <div className="md:col-span-5 lg:col-span-4 space-y-6 mb-6 md:mb-0 md:sticky md:top-6">
             {/* User Info */}
-            <div className="bg-white border border-stone-100 rounded-3xl p-6 flex flex-col items-center text-center shadow-sm">
-              {currentUser?.avatar ? (
-                <img src={currentUser.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-[#5A8F5A] mb-4 shadow-sm" />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-[#E8F0E8] flex items-center justify-center text-3xl font-bold text-[#5A8F5A] mb-4 shadow-sm">
-                  {currentUser?.name.charAt(0)}
+            <div className="bg-white border border-stone-100 rounded-3xl p-6 flex flex-col items-center text-center shadow-sm relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+              <div className="relative">
+                {currentUser?.avatar ? (
+                  <img src={currentUser.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-[#5A8F5A] mb-4 shadow-sm object-cover" />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-[#E8F0E8] flex items-center justify-center text-3xl font-bold text-[#5A8F5A] mb-4 shadow-sm">
+                    {currentUser?.name.charAt(0)}
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 rounded-full mb-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="w-8 h-8 text-white" />
                 </div>
-              )}
+              </div>
               <h2 className="text-xl font-bold text-[#1A2E1A]">{currentUser?.name}</h2>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A] mt-1">{currentUser?.role}</p>
-              
-              <div className="mt-4 w-full">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 text-left">Wissel Gebruiker (Demo)</label>
-                <select 
-                  className="w-full bg-[#F5F7F4] border-none rounded-xl p-3 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                  value={currentUser?.id || ''}
-                  onChange={(e) => setCurrentUser(e.target.value)}
-                >
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({families.find(f => f.id === u.familyId)?.name || 'Geen groep'})</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             <button className="w-full bg-red-50 text-red-600 rounded-2xl p-4 flex items-center justify-center space-x-2 font-bold hover:bg-red-100 transition-colors">
@@ -161,7 +210,7 @@ export default function Profile() {
                 </div>
 
                 {isEditingFamily && (
-                  <div className="flex space-x-2 mb-4 bg-stone-50 p-3 rounded-xl">
+                  <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-stone-50 p-3 rounded-xl">
                     <input 
                       type="text" 
                       className="flex-1 bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
@@ -169,18 +218,20 @@ export default function Profile() {
                       onChange={(e) => setEditFamilyName(e.target.value)}
                       autoFocus
                     />
-                    <button 
-                      onClick={handleUpdateFamily}
-                      className="bg-[#5A8F5A] text-white px-3 rounded-xl text-sm font-bold hover:bg-[#4A7A4A] transition-colors"
-                    >
-                      Opslaan
-                    </button>
-                    <button 
-                      onClick={() => setIsEditingFamily(false)}
-                      className="bg-stone-200 text-stone-600 px-3 rounded-xl text-sm font-bold hover:bg-stone-300 transition-colors"
-                    >
-                      Annuleren
-                    </button>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={handleUpdateFamily}
+                        className="flex-1 bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A] transition-colors"
+                      >
+                        Opslaan
+                      </button>
+                      <button 
+                        onClick={() => setIsEditingFamily(false)}
+                        className="flex-1 bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300 transition-colors"
+                      >
+                        Annuleren
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -232,30 +283,31 @@ export default function Profile() {
                       <span>Nieuwe groep aanmaken</span>
                     </button>
                   ) : (
-                    <div className="flex space-x-2">
-                      <input 
-                        type="text" 
-                        placeholder="Naam van de groep" 
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        placeholder="Naam van de groep"
                         className="flex-1 bg-[#F5F7F4] border-none rounded-xl p-3 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
                         value={newFamilyName}
                         onChange={(e) => setNewFamilyName(e.target.value)}
                         autoFocus
                       />
-                      <button 
-                        onClick={handleAddFamily}
-                        className="bg-[#5A8F5A] text-white px-4 rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors"
-                      >
-                        Opslaan
-                      </button>
-                      <button 
-                        onClick={() => { setIsAddingFamily(false); setNewFamilyName(''); }}
-                        className="bg-stone-200 text-stone-600 px-4 rounded-xl font-bold hover:bg-stone-300 transition-colors"
-                      >
-                        Annuleren
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={handleAddFamily}
+                          className="flex-1 bg-[#5A8F5A] text-white px-4 py-3 rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors"
+                        >
+                          Opslaan
+                        </button>
+                        <button
+                          onClick={() => { setIsAddingFamily(false); setNewFamilyName(''); }}
+                          className="flex-1 bg-stone-200 text-stone-600 px-4 py-3 rounded-xl font-bold hover:bg-stone-300 transition-colors"
+                        >
+                          Annuleren
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  )}                </div>
               </div>
 
               {currentFamily && (
@@ -319,8 +371,8 @@ export default function Profile() {
                             {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                           </select>
                           <div className="flex space-x-2">
-                            <button onClick={() => handleUpdateUser(user.id)} className="bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
-                            <button onClick={() => setEditingUserId(null)} className="bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
+                            <button onClick={() => handleUpdateUser(user.id)} className="flex-1 bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
+                            <button onClick={() => setEditingUserId(null)} className="flex-1 bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
                           </div>
                         </div>
                       ) : (
@@ -403,8 +455,8 @@ export default function Profile() {
                           {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </select>
                         <div className="flex space-x-2">
-                          <button onClick={handleAddUser} className="bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
-                          <button onClick={() => setIsAddingUser(false)} className="bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
+                          <button onClick={handleAddUser} className="flex-1 bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
+                          <button onClick={() => setIsAddingUser(false)} className="flex-1 bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
                         </div>
                       </div>
                     )}
@@ -429,6 +481,25 @@ export default function Profile() {
                     <span className="text-sm font-bold text-[#1A2E1A]">App Instellingen</span>
                   </div>
                 </button>
+                
+                {currentUser?.role === 'Admin' && (
+                  <>
+                    <button onClick={handleExportData} className="w-full p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                      <div className="flex items-center space-x-3 text-stone-700">
+                        <Download className="w-5 h-5" />
+                        <span className="text-sm font-bold text-[#1A2E1A]">Exporteer Database (.json)</span>
+                      </div>
+                    </button>
+                    <button onClick={() => dataInputRef.current?.click()} className="w-full p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                      <div className="flex items-center space-x-3 text-stone-700">
+                        <Upload className="w-5 h-5" />
+                        <span className="text-sm font-bold text-[#1A2E1A]">Importeer Database (.json)</span>
+                      </div>
+                      <input type="file" ref={dataInputRef} className="hidden" accept=".json,application/json" onChange={handleImportData} />
+                    </button>
+                  </>
+                )}
+
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center space-x-3 text-stone-700">
                     <Plane className="w-5 h-5" />
