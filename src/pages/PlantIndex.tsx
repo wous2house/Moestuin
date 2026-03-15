@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useStore, Plant, PlantFamily, SunPreference } from '../store/useStore';
-import { Search, Info, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2 } from 'lucide-react';
+import { Search, Info, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { generatePlantData } from '../lib/gemini';
 
 export default function PlantIndex() {
-  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, currentUser } = useStore();
+  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, currentUser, tasks, setIsNotificationsModalOpen } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'index' | 'zaden'>('index');
+  
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
   
   const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);
   const [newPlantInput, setNewPlantInput] = useState('');
@@ -102,13 +104,26 @@ export default function PlantIndex() {
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Gewassen & Zaden</h1>
           <p className="text-sm text-stone-500">Ontdek alles over je gewassen</p>
         </div>
-        <button 
-          onClick={() => setIsAddingModalOpen(true)}
-          className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden md:inline">Nieuw Gewas</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => setIsAddingModalOpen(true)}
+            className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden md:inline">Nieuw Gewas</span>
+          </button>
+          <button 
+            onClick={() => setIsNotificationsModalOpen(true)}
+            className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
+          >
+            <Bell className="w-5 h-5 text-stone-600" />
+            {activeTasksCount > 0 && (
+              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                {activeTasksCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Add Plant Modal */}
@@ -169,13 +184,13 @@ export default function PlantIndex() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Familie</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Type</label>
                       <select 
                         value={generatedPlantData.family || 'Overig'}
                         onChange={(e) => setGeneratedPlantData({ ...generatedPlantData, family: e.target.value as PlantFamily })}
                         className="w-full bg-white border border-stone-200 rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
                       >
-                        {['Nachtschade', 'Kruisbloemigen', 'Vlinderbloemigen', 'Schermbloemigen', 'Composieten', 'Lelieachtigen', 'Komkommerachtigen', 'Grasachtigen', 'Overig'].map(fam => (
+                        {['Groente', 'Fruit', 'Zaden', 'Bloemen', 'Overig'].map(fam => (
                           <option key={fam} value={fam}>{fam}</option>
                         ))}
                       </select>
@@ -323,7 +338,7 @@ export default function PlantIndex() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
           <input
             type="text"
-            placeholder="Zoek plant of familie..."
+            placeholder="Zoek plant of type..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]/20 focus:border-[#5A8F5A] transition-all shadow-sm"

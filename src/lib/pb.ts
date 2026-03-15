@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import PocketBase from 'pocketbase';
 
 // URL van je PocketBase VPS (bijv. https://api.jouw-moestuin-domein.nl)

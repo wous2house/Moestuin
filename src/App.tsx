@@ -10,6 +10,7 @@ import Tasks from './pages/Tasks';
 import PlantIndex from './pages/PlantIndex';
 import Profile from './pages/Profile';
 import AddPlant from './pages/AddPlant';
+import Harvests from './pages/Harvests';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route index element={<Home />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="plants" element={<PlantIndex />} />
+          <Route path="harvests" element={<Harvests />} />
           <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="/add" element={<AddPlant />} />

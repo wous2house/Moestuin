@@ -1,14 +1,21 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { User, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash2, Camera, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { format, addDays } from 'date-fns';
 
 export default function Profile() {
-  const { currentUser, users, families, vacationMode, setVacationMode, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData } = useStore();
+  const { currentUser, users, families, vacationMode, vacationDelegateId, activateVacationMode, deactivateVacationMode, pushNotifications, setPushNotifications, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData, tasks, setIsNotificationsModalOpen } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dataInputRef = useRef<HTMLInputElement>(null);
+  
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
   const [isAddingFamily, setIsAddingFamily] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
+  const [selectedDelegateId, setSelectedDelegateId] = useState('');
+  const [showVacationConfig, setShowVacationConfig] = useState(false);
+  const [vacationStartDate, setVacationStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [vacationEndDate, setVacationEndDate] = useState(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
   
   const handleExportData = () => {
     const state = useStore.getState();
@@ -81,6 +88,17 @@ export default function Profile() {
     }
   };
 
+  const handleAdminAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>, userId: string) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateUser(userId, { avatar: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddFamily = () => {
     if (newFamilyName.trim()) {
       addFamily(newFamilyName.trim());
@@ -135,9 +153,22 @@ export default function Profile() {
 
   return (
     <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col">
-      <header className="mb-6 pt-4">
-        <h1 className="text-2xl font-bold text-[#1A2E1A]">Profiel</h1>
-        <p className="text-sm text-stone-500">Beheer je account en gezin</p>
+      <header className="mb-6 pt-4 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-[#1A2E1A]">Profiel</h1>
+          <p className="text-sm text-stone-500">Beheer je account en gezin</p>
+        </div>
+        <button 
+          onClick={() => setIsNotificationsModalOpen(true)}
+          className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
+        >
+          <Bell className="w-5 h-5 text-stone-600" />
+          {activeTasksCount > 0 && (
+            <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+              {activeTasksCount}
+            </span>
+          )}
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
@@ -256,24 +287,6 @@ export default function Profile() {
                 )}
 
                 <div className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Wissel van groep</label>
-                    <select 
-                      className="w-full bg-[#F5F7F4] border-none rounded-xl p-3 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                      value={currentUser?.familyId || ''}
-                      onChange={(e) => {
-                        if (currentUser) {
-                          updateUserFamily(currentUser.id, e.target.value);
-                        }
-                      }}
-                    >
-                      <option value="" disabled>Selecteer een groep</option>
-                      {families.map(f => (
-                        <option key={f.id} value={f.id}>{f.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
                   {!isAddingFamily ? (
                     <button 
                       onClick={() => setIsAddingFamily(true)}
@@ -347,7 +360,20 @@ export default function Profile() {
                   {users.map(user => (
                     <div key={user.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {editingUserId === user.id ? (
-                        <div className="flex-1 flex flex-col md:flex-row gap-2 w-full">
+                        <div className="flex-1 flex flex-col md:flex-row gap-2 w-full items-center">
+                          <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById(`avatar-upload-${user.id}`)?.click()}>
+                            <input type="file" id={`avatar-upload-${user.id}`} className="hidden" accept="image/*" onChange={(e) => handleAdminAvatarUpload(e, user.id)} />
+                            {user.avatar ? (
+                              <img src={user.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-[#E8F0E8] flex items-center justify-center text-sm font-bold text-[#5A8F5A]">
+                                {user.name.charAt(0)}
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Camera className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
                           <input 
                             type="text" 
                             className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
@@ -469,19 +495,131 @@ export default function Profile() {
             <section>
               <h3 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-3">Instellingen</h3>
               <div className="bg-white border border-stone-100 rounded-2xl divide-y divide-stone-50 shadow-sm">
-                <button className="w-full p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+                <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center space-x-3 text-stone-700">
                     <Bell className="w-5 h-5" />
-                    <span className="text-sm font-bold text-[#1A2E1A]">Notificaties</span>
+                    <div>
+                      <span className="text-sm font-bold text-[#1A2E1A] block text-left">Push Notificaties</span>
+                      <span className="text-[10px] text-stone-500">Ontvang apparaatmeldingen</span>
+                    </div>
                   </div>
-                </button>
-                <button className="w-full p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
-                  <div className="flex items-center space-x-3 text-stone-700">
-                    <Settings className="w-5 h-5" />
-                    <span className="text-sm font-bold text-[#1A2E1A]">App Instellingen</span>
+                  <button
+                    onClick={() => {
+                      if (!pushNotifications) {
+                        Notification.requestPermission().then(permission => {
+                          if (permission === 'granted') {
+                            setPushNotifications(true);
+                            new Notification("Moestuin JTHV", { body: "Notificaties zijn succesvol ingeschakeld!" });
+                          } else {
+                            alert("Je moet notificaties toestaan in je browser instellingen.");
+                          }
+                        });
+                      } else {
+                        setPushNotifications(false);
+                      }
+                    }}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                      pushNotifications ? "bg-[#5A8F5A]" : "bg-stone-200"
+                    )}
+                  >
+                    <span className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      pushNotifications ? "translate-x-6" : "translate-x-1"
+                    )} />
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 text-stone-700">
+                      <Plane className="w-5 h-5" />
+                      <div>
+                        <span className="text-sm font-bold text-[#1A2E1A] block text-left">Vakantiemodus</span>
+                        <span className="text-[10px] text-stone-500">
+                          {vacationMode && vacationDelegateId
+                            ? `Actief: Taken overgedragen aan ${familyMembers.find(u => u.id === vacationDelegateId)?.name || 'Onbekend'}`
+                            : 'Draag taken over aan anderen'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (vacationMode) {
+                          deactivateVacationMode();
+                          setShowVacationConfig(false);
+                        } else {
+                          setShowVacationConfig(!showVacationConfig);
+                          setSelectedDelegateId('');
+                        }
+                      }}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                        (vacationMode || showVacationConfig) ? "bg-[#5A8F5A]" : "bg-stone-200"
+                      )}
+                    >
+                      <span className={cn(
+                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                        (vacationMode || showVacationConfig) ? "translate-x-6" : "translate-x-1"
+                      )} />
+                    </button>
                   </div>
-                </button>
-                
+                  
+                  {showVacationConfig && !vacationMode && (
+                    <div className="mt-4 pt-4 border-t border-stone-100 flex flex-col gap-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Start Vakantie</label>
+                          <input 
+                            type="date"
+                            value={vacationStartDate}
+                            onChange={(e) => setVacationStartDate(e.target.value)}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Eind Vakantie</label>
+                          <input 
+                            type="date"
+                            value={vacationEndDate}
+                            onChange={(e) => setVacationEndDate(e.target.value)}
+                            className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select 
+                          className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                          value={selectedDelegateId}
+                          onChange={(e) => setSelectedDelegateId(e.target.value)}
+                        >
+                          <option value="" disabled>Selecteer overdrachtspersoon</option>
+                          {users.filter(u => u.id !== currentUser?.id).map(user => (
+                            <option key={user.id} value={user.id}>{user.name}</option>
+                          ))}
+                        </select>
+                        <button 
+                          onClick={() => {
+                            if (selectedDelegateId) {
+                              activateVacationMode(selectedDelegateId, vacationStartDate, vacationEndDate);
+                              setShowVacationConfig(false);
+                              if (pushNotifications) {
+                                new Notification("Moestuin JTHV", { body: "Je taken in deze periode zijn succesvol overgedragen!" });
+                              }
+                            } else {
+                              alert("Selecteer eerst een overdrachtspersoon.");
+                            }
+                          }}
+                          className="bg-[#5A8F5A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A] transition-colors"
+                        >
+                          Activeer overdracht
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {currentUser?.role === 'Admin' && (
                   <>
                     <button onClick={handleExportData} className="w-full p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
@@ -499,28 +637,6 @@ export default function Profile() {
                     </button>
                   </>
                 )}
-
-                <div className="p-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-3 text-stone-700">
-                    <Plane className="w-5 h-5" />
-                    <div>
-                      <span className="text-sm font-bold text-[#1A2E1A] block text-left">Vakantiemodus</span>
-                      <span className="text-[10px] text-stone-500">Draag taken over aan anderen</span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setVacationMode(!vacationMode)}
-                    className={cn(
-                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                      vacationMode ? "bg-[#5A8F5A]" : "bg-stone-200"
-                    )}
-                  >
-                    <span className={cn(
-                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                      vacationMode ? "translate-x-6" : "translate-x-1"
-                    )} />
-                  </button>
-                </div>
               </div>
             </section>
           </div>

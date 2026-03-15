@@ -1,19 +1,25 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { CheckCircle2, Circle, Droplets, Scissors, Sprout, Wheat, MoreHorizontal, Plus, X } from 'lucide-react';
+import { CheckCircle2, Circle, Droplets, Scissors, Sprout, Wheat, MoreHorizontal, Plus, X, Bell } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
 export default function Tasks() {
-  const { tasks, toggleTask, users, grid, plants, addTask, currentUser } = useStore();
+  const { tasks, toggleTask, users, grid, plants, addTask, updateTask, currentUser, setIsNotificationsModalOpen } = useStore();
   const [isAddingTaskOpen, setIsAddingTaskOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
   const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [dateType, setDateType] = useState<'single' | 'period' | 'continuous'>('single');
   const [newTaskDueDate, setNewTaskDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [newTaskEndDate, setNewTaskEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newTaskType, setNewTaskType] = useState('Water');
   const [newTaskAssignedTo, setNewTaskAssignedTo] = useState<string>('');
   const [newTaskCellId, setNewTaskCellId] = useState<string>('');
+
+  const [reassigningTaskId, setReassigningTaskId] = useState<string | null>(null);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -27,7 +33,9 @@ export default function Tasks() {
 
   const sortedTasks = [...tasks].sort((a, b) => {
     if (a.completed === b.completed) {
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      return dateA - dateB;
     }
     return a.completed ? 1 : -1;
   });
@@ -37,7 +45,8 @@ export default function Tasks() {
       addTask({
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim(),
-        dueDate: newTaskDueDate,
+        dueDate: dateType === 'continuous' ? null : newTaskDueDate,
+        endDate: dateType === 'period' ? newTaskEndDate : null,
         completed: false,
         assignedTo: newTaskAssignedTo || null,
         relatedCellId: newTaskCellId || null,
@@ -46,7 +55,9 @@ export default function Tasks() {
       setIsAddingTaskOpen(false);
       setNewTaskTitle('');
       setNewTaskDescription('');
+      setDateType('single');
       setNewTaskDueDate(format(new Date(), 'yyyy-MM-dd'));
+      setNewTaskEndDate(format(new Date(), 'yyyy-MM-dd'));
       setNewTaskAssignedTo('');
       setNewTaskCellId('');
     }
@@ -59,19 +70,32 @@ export default function Tasks() {
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Taken</h1>
           <p className="text-sm text-stone-500">Wat moet er gebeuren in de tuin?</p>
         </div>
-        <button 
-          onClick={() => setIsAddingTaskOpen(true)}
-          className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden md:inline">Nieuwe Taak</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => setIsAddingTaskOpen(true)}
+            className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden md:inline">Nieuwe Taak</span>
+          </button>
+          <button 
+            onClick={() => setIsNotificationsModalOpen(true)}
+            className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
+          >
+            <Bell className="w-5 h-5 text-stone-600" />
+            {activeTasksCount > 0 && (
+              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                {activeTasksCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sortedTasks.map(task => {
-            const isOverdue = isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && !task.completed;
+            const isOverdue = task.dueDate ? isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && !task.completed : false;
             const assignedUser = users.find(u => u.id === task.assignedTo);
             const relatedCell = task.relatedCellId ? grid.find(c => c.id === task.relatedCellId) : null;
             const relatedPlant = relatedCell?.plantId ? plants.find(p => p.id === relatedCell.plantId) : null;
@@ -118,11 +142,19 @@ export default function Tasks() {
                       "text-[10px] font-bold uppercase tracking-wider",
                       isOverdue ? "text-red-600" : "text-stone-400"
                     )}>
-                      {format(new Date(task.dueDate), 'd MMM', { locale: nl })}
+                      {task.dueDate 
+                        ? (task.endDate 
+                            ? `${format(new Date(task.dueDate), 'd MMM', { locale: nl })} - ${format(new Date(task.endDate), 'd MMM', { locale: nl })}`
+                            : format(new Date(task.dueDate), 'd MMM', { locale: nl }))
+                        : "Doorlopend"
+                      }
                     </span>
                     
-                    {assignedUser && (
-                      <div className="flex items-center space-x-1.5 bg-[#F5F7F4] px-2 py-1 rounded-md">
+                    {assignedUser ? (
+                      <button 
+                        onClick={() => setReassigningTaskId(task.id)}
+                        className="flex items-center space-x-1.5 bg-[#F5F7F4] hover:bg-[#E8F0E8] transition-colors px-2 py-1 rounded-md"
+                      >
                         {assignedUser.avatar ? (
                           <img src={assignedUser.avatar} alt="" className="w-4 h-4 rounded-full" />
                         ) : (
@@ -131,7 +163,14 @@ export default function Tasks() {
                           </div>
                         )}
                         <span className="text-xs font-bold text-stone-600">{assignedUser.name}</span>
-                      </div>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setReassigningTaskId(task.id)}
+                        className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-2 py-1 rounded-md hover:bg-[#D0E0D0] transition-colors"
+                      >
+                        Toewijzen
+                      </button>
                     )}
                   </div>
                 </div>
@@ -180,13 +219,16 @@ export default function Tasks() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Datum</label>
-                  <input 
-                    type="date"
-                    value={newTaskDueDate}
-                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Periode</label>
+                  <select 
+                    value={dateType}
+                    onChange={(e) => setDateType(e.target.value as any)}
                     className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
-                  />
+                  >
+                    <option value="single">Specifieke Datum</option>
+                    <option value="period">Periode (Van-Tot)</option>
+                    <option value="continuous">Doorlopend</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Type Taak</label>
@@ -203,6 +245,31 @@ export default function Tasks() {
                   </select>
                 </div>
               </div>
+
+              {dateType !== 'continuous' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">{dateType === 'period' ? 'Start Datum' : 'Datum'}</label>
+                    <input 
+                      type="date"
+                      value={newTaskDueDate}
+                      onChange={(e) => setNewTaskDueDate(e.target.value)}
+                      className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                    />
+                  </div>
+                  {dateType === 'period' && (
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Eind Datum</label>
+                      <input 
+                        type="date"
+                        value={newTaskEndDate}
+                        onChange={(e) => setNewTaskEndDate(e.target.value)}
+                        className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Toewijzen Aan</label>
@@ -245,6 +312,46 @@ export default function Tasks() {
             >
               Taak Opslaan
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Modal */}
+      {reassigningTaskId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col relative animate-in fade-in zoom-in-95">
+            <button 
+              onClick={() => setReassigningTaskId(null)}
+              className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-1">Taak Toewijzen</h2>
+            <p className="text-sm text-stone-500 mb-6">Aan wie wil je deze taak toewijzen?</p>
+            <div className="space-y-2 mb-6">
+              <button
+                onClick={() => { updateTask(reassigningTaskId, { assignedTo: null }); setReassigningTaskId(null); }}
+                className="w-full text-left p-3 rounded-xl hover:bg-[#F5F7F4] transition-colors text-sm font-bold text-stone-600 border border-transparent hover:border-stone-200"
+              >
+                Iedereen (Niemand specifiek)
+              </button>
+              {users.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => { updateTask(reassigningTaskId, { assignedTo: u.id }); setReassigningTaskId(null); }}
+                  className="w-full text-left p-3 rounded-xl hover:bg-[#F5F7F4] transition-colors text-sm font-bold text-[#1A2E1A] border border-transparent hover:border-stone-200 flex items-center space-x-3"
+                >
+                  {u.avatar ? (
+                    <img src={u.avatar} alt="" className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-[#E8F0E8] flex items-center justify-center text-[10px] font-bold text-[#5A8F5A]">
+                      {u.name.charAt(0)}
+                    </div>
+                  )}
+                  <span>{u.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

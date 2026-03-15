@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { Home, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle } from 'lucide-react';
+import { Home, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
-  const { currentUser, tasks, logs, grid, users } = useStore();
-  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen } = useStore();
 
   const activeTasks = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id));
   const activeTasksCount = activeTasks.length;
@@ -22,6 +21,7 @@ export default function Layout() {
   ];
   
   const navItemsRight = [
+    { to: '/harvests', icon: Wheat, label: 'Oogsten' },
     { to: '/plants', icon: Sprout, label: 'Gewassen' },
     { to: '/profile', icon: Settings, label: 'Instellingen' },
   ];
@@ -31,27 +31,30 @@ export default function Layout() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[#EAF2EA] text-stone-900 overflow-hidden font-sans">
       
+      {/* Mobile Header */}
+      <header className="md:hidden bg-white border-b border-stone-200 p-4 flex items-center justify-between z-50 shadow-sm shrink-0">
+        <div className="flex items-center space-x-3">
+          <img src="/logo-transparent.png" alt="Moestuin JTHV Logo" className="w-10 h-10 object-contain" />
+          <span className="text-xl text-[#5A8F5A] font-bold tracking-wide">Moestuin JTHV</span>
+        </div>
+        <button 
+          onClick={() => setIsNotificationsModalOpen(true)}
+          className="relative bg-stone-50 rounded-full p-2.5 hover:bg-stone-100 transition-colors"
+        >
+          <Bell className="w-5 h-5 text-stone-600" />
+          {activeTasksCount > 0 && (
+            <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+              {activeTasksCount}
+            </span>
+          )}
+        </button>
+      </header>
+
       {/* Desktop/Tablet Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 shadow-sm z-50">
-        <div className="p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center text-[#5A8F5A]">
-              <Leaf className="w-6 h-6" />
-            </div>
-            <span className="text-xl font-bold text-[#1A2E1A]">Moestuin</span>
-          </div>
-          
-          <button 
-            onClick={() => setIsNotificationsModalOpen(true)}
-            className="relative bg-stone-50 rounded-full p-2.5 hover:bg-stone-100 transition-colors"
-          >
-            <Bell className="w-5 h-5 text-stone-600" />
-            {activeTasksCount > 0 && (
-              <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                {activeTasksCount}
-              </span>
-            )}
-          </button>
+        <div className="p-6 flex flex-col items-center justify-center w-full text-center">
+          <img src="/logo-transparent.png" alt="Moestuin JTHV Logo" className="w-24 h-24 object-contain mb-3 drop-shadow-sm" />
+          <span className="text-2xl text-[#5A8F5A] font-serif font-bold tracking-wide">Moestuin JTHV</span>
         </div>
 
         <div className="px-6 mb-8">

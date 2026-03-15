@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { addDays, format } from 'date-fns';
 
-export type PlantFamily = 'Nachtschade' | 'Kruisbloemigen' | 'Vlinderbloemigen' | 'Schermbloemigen' | 'Composieten' | 'Lelieachtigen' | 'Komkommerachtigen' | 'Grasachtigen' | 'Overig';
+export type PlantFamily = 'Groente' | 'Fruit' | 'Zaden' | 'Bloemen' | 'Overig';
 export type SunPreference = 'Zon' | 'Halfschaduw' | 'Schaduw' | 'Duisternis';
 export type PlantType = 'Zaad' | 'Bol' | 'Plant';
 
@@ -34,9 +35,11 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  dueDate: string;
+  dueDate: string | null; // null means continuous
+  endDate?: string | null; // if set, task is a period from dueDate to endDate
   completed: boolean;
   assignedTo: string | null;
+  originalAssignedTo?: string | null;
   relatedCellId: string | null;
   type: 'Water' | 'Oogst' | 'Snoei' | 'Zaai' | 'Overig';
 }
@@ -60,6 +63,18 @@ export interface SeedInventory {
   unit?: 'stuks' | 'gram';
 }
 
+export interface HarvestRecord {
+  id: string;
+  plantId: string;
+  plantName: string;
+  date: string;
+  userId: string | null;
+  yieldQuantity: number;
+  yieldUnit: string;
+  notes?: string;
+  distributedTo?: { familyId: string; quantity: number }[];
+}
+
 export interface GrowthLog {
   id: string;
   cellId: string;
@@ -80,20 +95,32 @@ interface AppState {
   families: FamilyGroup[];
   currentUser: User | null;
   seedBox: SeedInventory[];
+  harvests: HarvestRecord[];
   logs: GrowthLog[];
   vacationMode: boolean;
-  
+  vacationDelegateId?: string | null;
+  vacationStartDate?: string | null;
+  vacationEndDate?: string | null;
+  pushNotifications: boolean;
+  isNotificationsModalOpen: boolean;
+
   // Actions
   setGridCell: (cellId: string, updates: Partial<GridCell>) => void;
   updateGridSize: (width: number, height: number) => { success: boolean; message?: string };
   addTask: (task: Omit<Task, 'id'>) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
   addPlant: (plant: Omit<Plant, 'id'>) => string;
   updatePlant: (id: string, updates: Partial<Plant>) => void;
   deletePlant: (id: string) => void;
   addSeed: (seed: SeedInventory) => void;
   toggleTask: (taskId: string) => void;
-  setVacationMode: (active: boolean) => void;
+  activateVacationMode: (delegateId: string, startDate: string, endDate: string) => void;
+  deactivateVacationMode: () => void;
+  setPushNotifications: (active: boolean) => void;
+  setIsNotificationsModalOpen: (open: boolean) => void;
   addLog: (log: Omit<GrowthLog, 'id'>) => void;
+  addHarvest: (harvest: Omit<HarvestRecord, 'id'>) => void;
+  updateHarvest: (id: string, updates: Partial<HarvestRecord>) => void;
   addFamily: (name: string) => string;
   updateFamily: (id: string, name: string) => void;
   deleteFamily: (id: string) => void;
@@ -107,12 +134,12 @@ interface AppState {
 
 // Mock Data
 const MOCK_PLANTS: Plant[] = [
-  { id: 'p1', name: 'Tomaat', family: 'Nachtschade', goodNeighbors: ['p2', 'p4'], badNeighbors: ['p3'], sunPreference: 'Zon', daysToHarvest: 80, waterNeeds: 'Hoog', icon: '🍅', imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p2', name: 'Basilicum', family: 'Overig', goodNeighbors: ['p1'], badNeighbors: [], sunPreference: 'Zon', daysToHarvest: 40, waterNeeds: 'Gemiddeld', icon: '🌿', imageUrl: 'https://images.unsplash.com/photo-1615486171448-4fc1eb8f15b4?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p3', name: 'Aardappel', family: 'Nachtschade', goodNeighbors: [], badNeighbors: ['p1'], sunPreference: 'Zon', daysToHarvest: 100, waterNeeds: 'Gemiddeld', icon: '🥔', imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p4', name: 'Wortel', family: 'Schermbloemigen', goodNeighbors: ['p1', 'p5'], badNeighbors: [], sunPreference: 'Halfschaduw', daysToHarvest: 70, waterNeeds: 'Gemiddeld', icon: '🥕', imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p5', name: 'Ui', family: 'Lelieachtigen', goodNeighbors: ['p4'], badNeighbors: ['p6'], sunPreference: 'Zon', daysToHarvest: 90, waterNeeds: 'Laag', icon: '🧅', imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p6', name: 'Boon', family: 'Vlinderbloemigen', goodNeighbors: [], badNeighbors: ['p5'], sunPreference: 'Zon', daysToHarvest: 60, waterNeeds: 'Gemiddeld', icon: '🫘', imageUrl: 'https://images.unsplash.com/photo-1551228450-4228913c2393?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p1', name: 'Tomaat', family: 'Groente', goodNeighbors: ['p2', 'p4'], badNeighbors: ['p3'], sunPreference: 'Zon', daysToHarvest: 80, waterNeeds: 'Hoog', icon: '🍅', imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p2', name: 'Basilicum', family: 'Zaden', goodNeighbors: ['p1'], badNeighbors: [], sunPreference: 'Zon', daysToHarvest: 40, waterNeeds: 'Gemiddeld', icon: '🌿', imageUrl: 'https://images.unsplash.com/photo-1615486171448-4fc1eb8f15b4?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p3', name: 'Aardappel', family: 'Groente', goodNeighbors: [], badNeighbors: ['p1'], sunPreference: 'Zon', daysToHarvest: 100, waterNeeds: 'Gemiddeld', icon: '🥔', imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p4', name: 'Wortel', family: 'Groente', goodNeighbors: ['p1', 'p5'], badNeighbors: [], sunPreference: 'Halfschaduw', daysToHarvest: 70, waterNeeds: 'Gemiddeld', icon: '🥕', imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p5', name: 'Ui', family: 'Groente', goodNeighbors: ['p4'], badNeighbors: ['p6'], sunPreference: 'Zon', daysToHarvest: 90, waterNeeds: 'Laag', icon: '🧅', imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&q=80&w=800' },
+  { id: 'p6', name: 'Boon', family: 'Groente', goodNeighbors: [], badNeighbors: ['p5'], sunPreference: 'Zon', daysToHarvest: 60, waterNeeds: 'Gemiddeld', icon: '🫘', imageUrl: 'https://images.unsplash.com/photo-1551228450-4228913c2393?auto=format&fit=crop&q=80&w=800' },
 ];
 
 const MOCK_FAMILIES: FamilyGroup[] = [
@@ -152,7 +179,9 @@ for (let y = 0; y < 4; y++) {
   }
 }
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   plants: MOCK_PLANTS,
   grid: initialGrid,
   gridWidth: 4,
@@ -168,8 +197,12 @@ export const useStore = create<AppState>((set, get) => ({
     { plantId: 'p1', quantity: 50 },
     { plantId: 'p4', quantity: 200 },
   ],
+  harvests: [],
   logs: [],
   vacationMode: false,
+  vacationDelegateId: null,
+  pushNotifications: false,
+  isNotificationsModalOpen: false,
 
   setGridCell: (cellId, updates) => set((state) => ({
     grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
@@ -216,6 +249,10 @@ export const useStore = create<AppState>((set, get) => ({
     tasks: [...state.tasks, { ...task, id: `t-${Date.now()}` }]
   })),
 
+  updateTask: (id, updates) => set((state) => ({
+    tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+  })),
+
   addPlant: (plant) => {
     const id = `p-${Date.now()}`;
     set((state) => ({
@@ -246,15 +283,71 @@ export const useStore = create<AppState>((set, get) => ({
     }
     return { seedBox: [...state.seedBox, seed] };
   }),
-  
   toggleTask: (taskId) => set((state) => ({
-    tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
+    tasks: state.tasks.map((t) =>
+      t.id === taskId ? { ...t, completed: !t.completed } : t
+    ),
   })),
-  
-  setVacationMode: (active) => set({ vacationMode: active }),
-  
+
+  activateVacationMode: (delegateId, startDate, endDate) => set((state) => ({
+    vacationMode: true,
+    vacationDelegateId: delegateId,
+    vacationStartDate: startDate,
+    vacationEndDate: endDate,
+    tasks: state.tasks.map(t => {
+      // If task is assigned to current user, reassign to delegate if it falls in the period
+      if (!t.completed && t.assignedTo === state.currentUser?.id) {
+        const tStart = t.dueDate ? new Date(t.dueDate) : null;
+        const tEnd = t.endDate ? new Date(t.endDate) : tStart;
+        
+        const vStart = new Date(startDate);
+        const vEnd = new Date(endDate);
+        vEnd.setHours(23, 59, 59, 999);
+        
+        let overlaps = false;
+        
+        if (!tStart) {
+           overlaps = true; // Continuous task
+        } else {
+           if (tStart <= vEnd && (tEnd ? tEnd >= vStart : true)) {
+             overlaps = true;
+           }
+        }
+        
+        if (overlaps) {
+          return { ...t, assignedTo: delegateId, originalAssignedTo: state.currentUser?.id };
+        }
+      }
+      return t;
+    })
+  })),
+
+  deactivateVacationMode: () => set((state) => ({
+    vacationMode: false,
+    vacationDelegateId: null,
+    vacationStartDate: null,
+    vacationEndDate: null,
+    tasks: state.tasks.map(t => {
+      // Revert tasks that were reassigned and are still assigned to the delegate
+      if (!t.completed && t.originalAssignedTo === state.currentUser?.id && t.assignedTo === state.vacationDelegateId) {
+        return { ...t, assignedTo: state.currentUser?.id, originalAssignedTo: null };
+      }
+      return t;
+    })
+  })),
+
+  setPushNotifications: (active) => set({ pushNotifications: active }),
+  setIsNotificationsModalOpen: (open) => set({ isNotificationsModalOpen: open }),
   addLog: (log) => set((state) => ({
     logs: [...state.logs, { ...log, id: `l-${Date.now()}` }]
+  })),
+
+  addHarvest: (harvest) => set((state) => ({
+    harvests: [...state.harvests, { ...harvest, id: `h-${Date.now()}` }]
+  })),
+
+  updateHarvest: (id, updates) => set((state) => ({
+    harvests: state.harvests.map(h => h.id === id ? { ...h, ...updates } : h)
   })),
 
   addFamily: (name) => {
@@ -310,8 +403,43 @@ export const useStore = create<AppState>((set, get) => ({
     currentUser: state.currentUser?.id === id ? null : state.currentUser
   })),
 
-  importData: (data) => set((state) => ({
-    ...state,
-    ...data
-  })),
-}));
+  importData: (data) => set((state) => {
+    // Update currentUser if it exists in the imported data
+    const newCurrentUser = data.users?.find((u: User) => u.id === state.currentUser?.id) || state.currentUser;
+    return {
+      ...state,
+      ...data,
+      currentUser: newCurrentUser,
+    };
+  }),
+}),
+{
+  name: 'moestuin-storage',
+  version: 1,
+  migrate: (persistedState: any, version: number) => {
+    if (version === 0) {
+      const state = persistedState;
+      const familyMap: Record<string, string> = {
+        'Nachtschade': 'Groente',
+        'Kruisbloemigen': 'Groente',
+        'Vlinderbloemigen': 'Groente',
+        'Schermbloemigen': 'Groente',
+        'Composieten': 'Groente',
+        'Komkommerachtigen': 'Groente',
+        'Lelieachtigen': 'Groente',
+        'Grasachtigen': 'Overig',
+        'Kruiden': 'Zaden',
+      };
+      
+      if (state.plants) {
+        state.plants = state.plants.map((p: any) => ({
+          ...p,
+          family: familyMap[p.family] || p.family
+        }));
+      }
+      return state;
+    }
+    return persistedState;
+  }
+}
+));

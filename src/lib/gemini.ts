@@ -9,7 +9,7 @@ export async function generatePlantData(plantName: string): Promise<any> {
       contents: `Je bent een moestuin expert. Genereer een JSON object met de eigenschappen van de plant/groente/fruit: "${plantName}". Gebruik EXACT deze structuur (en geef alleen geldige JSON terug zonder markdown blokken):
 {
   "name": "Naam (Capitalized)",
-  "family": "Een van: Nachtschade, Kruisbloemigen, Vlinderbloemigen, Schermbloemigen, Composieten, Lelieachtigen, Komkommerachtigen, Grasachtigen, Overig",
+  "family": "Een van: Groente, Fruit, Zaden, Bloemen, Overig",
   "goodNeighbors": ["Naam van plant", "Naam van plant"],
   "badNeighbors": ["Naam van plant"],
   "sunPreference": "Een van: Zon, Halfschaduw, Schaduw, Duisternis",

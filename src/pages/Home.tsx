@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStore, GridCell, Plant } from '../store/useStore';
 import { useWeather } from '../lib/weather';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { CloudRain, Sun, Cloud, Snowflake, CloudLightning, CloudFog, Droplets, Leaf, LayoutGrid, Plus, Minus, MoreVertical, Trash2, Calendar, User, Info, CheckCircle2, XCircle, AlertCircle, X } from 'lucide-react';
+import { CloudRain, Sun, Cloud, Snowflake, CloudLightning, CloudFog, Droplets, Leaf, LayoutGrid, Plus, Minus, MoreVertical, Trash2, Calendar, User, Info, CheckCircle2, XCircle, AlertCircle, X, Camera, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
@@ -16,18 +16,26 @@ const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
 };
 
 export default function Home() {
-  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks } = useStore();
+  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen } = useStore();
   const { weather, loading } = useWeather();
   const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0]);
   const [isSelectingPlant, setIsSelectingPlant] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
+  
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
   
+  const [isHarvestModalOpen, setIsHarvestModalOpen] = useState(false);
+  const [harvestQuantity, setHarvestQuantity] = useState('');
+  const [harvestUnit, setHarvestUnit] = useState('stuks');
+  
   const [isWateredModalOpen, setIsWateredModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
   const getPlant = (id: string | null) => plants.find(p => p.id === id);
   const getUser = (id: string | null) => users.find(u => u.id === id);
@@ -71,6 +79,24 @@ export default function Home() {
       });
       setNoteText('');
       setIsNoteModalOpen(false);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedCell) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        addLog({
+          cellId: selectedCell.id,
+          date: new Date().toISOString(),
+          type: 'Notitie',
+          note: 'Foto toegevoegd',
+          userId: currentUser?.id || null,
+          imageUrl: reader.result as string
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -134,6 +160,39 @@ export default function Home() {
     ? addDays(new Date(selectedCell.plantedDate), selectedPlant.daysToHarvest) 
     : null;
 
+  const isHarvestTime = harvestDate ? (
+    differenceInDays(new Date(), harvestDate) >= -7
+  ) : false;
+
+  const handleHarvest = () => {
+    if (selectedCell && selectedPlant && harvestQuantity) {
+      addHarvest({
+        plantId: selectedPlant.id,
+        plantName: selectedPlant.name,
+        date: new Date().toISOString(),
+        userId: currentUser?.id || null,
+        yieldQuantity: parseFloat(harvestQuantity),
+        yieldUnit: harvestUnit
+      });
+      addLog({
+        cellId: selectedCell.id,
+        date: new Date().toISOString(),
+        type: 'Oogst',
+        note: `Geoogst: ${harvestQuantity} ${harvestUnit}`,
+        userId: currentUser?.id || null
+      });
+      setGridCell(selectedCell.id, {
+        plantId: null,
+        plantedDate: null,
+        plantedBy: null,
+        plantType: null,
+      });
+      setIsHarvestModalOpen(false);
+      setHarvestQuantity('');
+      setSelectedCell(grid.find(c => c.id === selectedCell.id) || null);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 6 && hour < 12) return 'Goedemorgen';
@@ -169,10 +228,22 @@ export default function Home() {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Weer</p>
               <p className="text-sm font-bold text-[#1A2E1A]">
-                {loading ? '--' : Math.round(weather?.temperature || 0)}°C <span className="font-normal text-stone-500">{weather?.isRaining ? 'Regen' : 'Zonnig'}</span>
+                {loading ? '--' : Math.round(weather?.temperature || 0)}°C <span className="font-normal text-stone-500 hidden sm:inline">{weather?.isRaining ? 'Regen' : 'Zonnig'}</span>
               </p>
             </div>
             {weather?.isRaining ? <CloudRain className="w-6 h-6 text-blue-400" /> : <Sun className="w-6 h-6 text-[#5A8F5A]" />}
+          </button>
+          
+          <button 
+            onClick={() => setIsNotificationsModalOpen(true)}
+            className="hidden md:flex relative bg-white rounded-2xl p-3 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
+          >
+            <Bell className="w-6 h-6 text-stone-600" />
+            {activeTasksCount > 0 && (
+              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                {activeTasksCount}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -240,6 +311,12 @@ export default function Home() {
               {grid.map(cell => {
                 const plant = getPlant(cell.plantId);
                 const isSelected = selectedCell?.id === cell.id;
+                
+                let cellIsHarvestTime = false;
+                if (plant && cell.plantedDate) {
+                  const hDate = addDays(new Date(cell.plantedDate), plant.daysToHarvest);
+                  cellIsHarvestTime = differenceInDays(new Date(), hDate) >= -7;
+                }
 
                 return (
                   <button
@@ -250,7 +327,8 @@ export default function Home() {
                       isSelected 
                         ? "bg-[#E8F0E8] border-2 border-[#5A8F5A] shadow-sm" 
                         : "bg-white border border-stone-100 hover:border-[#5A8F5A]/30 shadow-sm",
-                      !plant && "border-dashed w-[4.5rem] md:w-auto"
+                      !plant && "border-dashed w-[4.5rem] md:w-auto",
+                      !isSelected && cellIsHarvestTime && "border-2 border-[#5A8F5A] animate-pulse shadow-[0_0_10px_rgba(90,143,90,0.3)]"
                     )}
                   >
                     {plant ? (
@@ -291,8 +369,11 @@ export default function Home() {
                     <span className="bg-white/90 backdrop-blur-sm text-[#1A2E1A] text-[10px] font-bold uppercase px-2 py-1 rounded-md">
                       RIJ {String.fromCharCode(65 + selectedCell.y)}{selectedCell.x + 1}
                     </span>
-                    <span className="bg-[#5A8F5A]/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase px-2 py-1 rounded-md">
-                      GROEIEND
+                    <span className={cn(
+                      "backdrop-blur-sm text-white text-[10px] font-bold uppercase px-2 py-1 rounded-md",
+                      isHarvestTime ? "bg-amber-500/90" : "bg-[#5A8F5A]/90"
+                    )}>
+                      {isHarvestTime ? 'RIJP' : 'GROEIEND'}
                     </span>
                   </div>
                 </div>
@@ -334,15 +415,27 @@ export default function Home() {
               </div>
 
               {harvestDate && (
-                <div className="bg-[#E8F0E8] rounded-xl p-4 mb-6 flex items-center justify-between">
+                <div 
+                  className={cn(
+                    "rounded-xl p-4 mb-6 flex items-center justify-between transition-all",
+                    isHarvestTime 
+                      ? "bg-[#E8F0E8] border-2 border-[#5A8F5A] cursor-pointer shadow-md hover:bg-[#D0E0D0]" 
+                      : "bg-[#E8F0E8]"
+                  )}
+                  onClick={isHarvestTime ? () => setIsHarvestModalOpen(true) : undefined}
+                >
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A]">Verwachte Oogst</p>
-                    <p className="text-sm font-bold text-[#1A2E1A]">
-                      {format(harvestDate, 'MMMM yyyy', { locale: nl })}
+                    <p className="text-sm font-bold text-[#1A2E1A] flex items-center">
+                      {format(harvestDate, 'd MMMM yyyy', { locale: nl })}
+                      {isHarvestTime && <span className="ml-2 text-[10px] text-white bg-[#5A8F5A] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">Oogst Tijd!</span>}
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                    <span className="text-lg">🧺</span>
+                  <div className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-colors",
+                    isHarvestTime ? "bg-[#5A8F5A] text-white" : "bg-white text-lg"
+                  )}>
+                    <span>🧺</span>
                   </div>
                 </div>
               )}
@@ -369,7 +462,7 @@ export default function Home() {
                     </>
                   )}
                 </button>
-                {selectedCell.plantType === 'Zaad' ? (
+                {selectedCell.plantType === 'Zaad' && (
                   <button 
                     onClick={handlePotPlant}
                     className="bg-amber-500 text-white rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-amber-600 transition-colors"
@@ -377,15 +470,34 @@ export default function Home() {
                     <Leaf className="w-4 h-4" />
                     <span>Ompoten</span>
                   </button>
-                ) : (
-                  <button 
-                    onClick={() => setIsNoteModalOpen(true)}
-                    className="bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Notitie</span>
-                  </button>
                 )}
+                <button 
+                  onClick={() => setIsNoteModalOpen(true)}
+                  className={cn(
+                    "bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors",
+                    selectedCell.plantType !== 'Zaad' && "col-span-1"
+                  )}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Notitie</span>
+                </button>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors",
+                    selectedCell.plantType === 'Zaad' && "col-span-2"
+                  )}
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Foto</span>
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handlePhotoUpload} 
+                />
               </div>
 
               <div className="space-y-3">
@@ -403,7 +515,7 @@ export default function Home() {
                     <div>
                       <div className="flex items-center space-x-2 mb-1">
                         <CheckCircle2 className="w-4 h-4 text-[#5A8F5A]" />
-                        <span className="text-xs font-bold text-[#1A2E1A]">Goede buren</span>
+                        <span className="text-xs font-bold text-[#5A8F5A]">Goede buren</span>
                       </div>
                       <p className="text-xs text-stone-500 pl-6">
                         {selectedPlant.goodNeighbors.map(id => {
@@ -414,8 +526,8 @@ export default function Home() {
                     </div>
                     <div>
                       <div className="flex items-center space-x-2 mb-1">
-                        <XCircle className="w-4 h-4 text-red-400" />
-                        <span className="text-xs font-bold text-[#1A2E1A]">Slechte buren</span>
+                        <XCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-xs font-bold text-red-500">Slechte buren</span>
                       </div>
                       <p className="text-xs text-stone-500 pl-6">
                         {selectedPlant.badNeighbors.map(id => {
@@ -441,6 +553,14 @@ export default function Home() {
                                 <span className="text-[10px] text-stone-400">{format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</span>
                               </div>
                               <p className="text-[10px] text-stone-500 mt-1">{log.note}</p>
+                              {log.imageUrl && (
+                                <img 
+                                  src={log.imageUrl} 
+                                  alt="Log" 
+                                  onClick={() => setSelectedPhotoUrl(log.imageUrl as string)}
+                                  className="mt-2 w-full h-32 object-cover rounded-lg border border-stone-200 cursor-pointer hover:opacity-90 transition-opacity" 
+                                />
+                              )}
                               {user && <p className="text-[9px] font-bold text-[#5A8F5A] mt-1">Door: {user.name}</p>}
                             </div>
                           </div>
@@ -603,6 +723,65 @@ export default function Home() {
               Begrepen
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Harvest Modal */}
+      {isHarvestModalOpen && selectedPlant && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col relative animate-in fade-in zoom-in-95">
+            <button 
+              onClick={() => setIsHarvestModalOpen(false)}
+              className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-1">Oogst Afronden</h2>
+            <p className="text-sm text-stone-500 mb-6">Hoeveel {selectedPlant.name} heb je geoogst?</p>
+
+            <div className="space-y-4 mb-6">
+              <div className="flex space-x-3">
+                <input
+                  type="number"
+                  value={harvestQuantity}
+                  onChange={(e) => setHarvestQuantity(e.target.value)}
+                  placeholder="Aantal/Hoeveelheid"
+                  className="w-2/3 bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
+                  autoFocus
+                />
+                <select
+                  value={harvestUnit}
+                  onChange={(e) => setHarvestUnit(e.target.value)}
+                  className="w-1/3 bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
+                >
+                  <option value="stuks">Stuks</option>
+                  <option value="gram">Gram</option>
+                  <option value="kg">Kg</option>
+                </select>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleHarvest}
+              disabled={!harvestQuantity}
+              className="w-full py-3 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center space-x-2"
+            >
+              <span>🧺 Opslaan & Vak Legen</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Viewer Modal */}
+      {selectedPhotoUrl && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSelectedPhotoUrl(null)}>
+          <button 
+            onClick={() => setSelectedPhotoUrl(null)}
+            className="absolute top-4 right-4 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img src={selectedPhotoUrl} alt="Volledige weergave" className="max-w-full max-h-full rounded-2xl object-contain animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
     </div>
