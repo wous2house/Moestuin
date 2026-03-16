@@ -1,23 +1,27 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { Home, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat } from 'lucide-react';
+import { TreeDeciduous, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat, LogOut } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
-  const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen } = useStore();
+  const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
 
   const activeTasks = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id));
   const activeTasksCount = activeTasks.length;
-  const recentActivities = logs.filter(l => l.userId !== currentUser?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+
+  const unreadLogs = logs
+    .filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id)))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const notificationsCount = activeTasksCount + unreadLogs.length;
 
   const getUser = (id: string | null) => users.find(u => u.id === id);
 
   const navItemsLeft = [
-    { to: '/', icon: Home, label: 'Tuin' },
-    { to: '/tasks', icon: ListTodo, label: 'Taken' },
+    { to: '/', icon: TreeDeciduous, label: 'Tuin' },    { to: '/tasks', icon: ListTodo, label: 'Taken' },
   ];
   
   const navItemsRight = [
@@ -42,9 +46,9 @@ export default function Layout() {
           className="relative bg-stone-50 rounded-full p-2.5 hover:bg-stone-100 transition-colors"
         >
           <Bell className="w-5 h-5 text-stone-600" />
-          {activeTasksCount > 0 && (
+          {notificationsCount > 0 && (
             <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-              {activeTasksCount}
+              {notificationsCount}
             </span>
           )}
         </button>
@@ -52,19 +56,19 @@ export default function Layout() {
 
       {/* Desktop/Tablet Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-stone-200 shadow-sm z-50">
-        <div className="p-6 flex flex-col items-center justify-center w-full text-center">
-          <img src="/logo-transparent.png" alt="Moestuin JTHV Logo" className="w-24 h-24 object-contain mb-3 drop-shadow-sm" />
-          <span className="text-2xl text-[#5A8F5A] font-serif font-bold tracking-wide">Moestuin JTHV</span>
+        <div className="p-4 flex flex-col items-center justify-center w-full text-center">
+          <img src="/logo-transparent.png" alt="Moestuin JTHV Logo" className="w-24 h-24 object-contain mb-2 drop-shadow-sm" />
+          <span className="text-xl text-[#5A8F5A] font-serif font-bold tracking-wide">Moestuin JTHV</span>
         </div>
 
-        <div className="px-6 mb-8">
+        <div className="px-6 mb-6">
           <Link to="/add" className="w-full bg-[#5A8F5A] text-white py-3 px-4 rounded-xl shadow-sm hover:bg-[#4A7A4A] transition-colors flex items-center justify-center space-x-2 font-bold">
             <Plus className="w-5 h-5" />
             <span>Nieuwe Plant</span>
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar pb-4">
           {allNavItems.map((item) => (
             <NavLink
               key={item.to}
@@ -83,6 +87,16 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="p-4 border-t border-stone-200">
+          <button 
+            onClick={() => useStore.getState().logout()}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors font-medium text-stone-500 hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Uitloggen</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -123,9 +137,9 @@ export default function Layout() {
           >
             <div className="relative">
               <Bell className="w-6 h-6" />
-              {activeTasksCount > 0 && (
+              {notificationsCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                  {activeTasksCount}
+                  {notificationsCount}
                 </span>
               )}
             </div>
@@ -194,14 +208,14 @@ export default function Layout() {
 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Recente Activiteit (Anderen)</h3>
-                {recentActivities.length > 0 ? (
+                {unreadLogs.length > 0 ? (
                   <div className="space-y-3">
-                    {recentActivities.map(log => {
+                    {unreadLogs.map(log => {
                       const logUser = getUser(log.userId);
                       const relatedCell = grid.find(c => c.id === log.cellId);
                       const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
                       return (
-                        <div key={log.id} className="flex items-center space-x-3 bg-[#F5F7F4] p-3 rounded-xl border border-stone-100">
+                        <div key={log.id} className="relative flex items-center space-x-3 bg-[#F5F7F4] p-3 pr-10 rounded-xl border border-stone-100 group">
                           {logUser?.avatar ? (
                             <img src={logUser.avatar} alt="" className="w-8 h-8 rounded-full" />
                           ) : (
@@ -213,12 +227,21 @@ export default function Layout() {
                             <p className="text-xs font-bold text-[#1A2E1A]">{logUser?.name} heeft actie '{log.type}' uitgevoerd</p>
                             <p className="text-[10px] text-stone-500">In vak {cellName} • {format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</p>
                           </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (currentUser) dismissLog(currentUser.id, log.id);
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200 rounded-full transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-sm text-stone-500 italic">Geen recente activiteit van anderen.</p>
+                  <p className="text-sm text-stone-500 italic">Geen nieuwe activiteiten van anderen.</p>
                 )}
               </div>
             </div>

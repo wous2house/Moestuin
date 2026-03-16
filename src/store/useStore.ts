@@ -103,6 +103,7 @@ interface AppState {
   vacationEndDate?: string | null;
   pushNotifications: boolean;
   isNotificationsModalOpen: boolean;
+  dismissedLogs: Record<string, string[]>;
 
   // Actions
   setGridCell: (cellId: string, updates: Partial<GridCell>) => void;
@@ -119,6 +120,7 @@ interface AppState {
   setPushNotifications: (active: boolean) => void;
   setIsNotificationsModalOpen: (open: boolean) => void;
   addLog: (log: Omit<GrowthLog, 'id'>) => void;
+  dismissLog: (userId: string, logId: string) => void;
   addHarvest: (harvest: Omit<HarvestRecord, 'id'>) => void;
   updateHarvest: (id: string, updates: Partial<HarvestRecord>) => void;
   addFamily: (name: string) => string;
@@ -126,6 +128,7 @@ interface AppState {
   deleteFamily: (id: string) => void;
   updateUserFamily: (userId: string, familyId: string) => void;
   setCurrentUser: (userId: string) => void;
+  logout: () => void;
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -203,6 +206,7 @@ export const useStore = create<AppState>()(
   vacationDelegateId: null,
   pushNotifications: false,
   isNotificationsModalOpen: false,
+  dismissedLogs: {},
 
   setGridCell: (cellId, updates) => set((state) => ({
     grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
@@ -342,6 +346,19 @@ export const useStore = create<AppState>()(
     logs: [...state.logs, { ...log, id: `l-${Date.now()}` }]
   })),
 
+  dismissLog: (userId, logId) => set((state) => {
+    const userDismissed = state.dismissedLogs[userId] || [];
+    if (!userDismissed.includes(logId)) {
+      return {
+        dismissedLogs: {
+          ...state.dismissedLogs,
+          [userId]: [...userDismissed, logId]
+        }
+      };
+    }
+    return state;
+  }),
+
   addHarvest: (harvest) => set((state) => ({
     harvests: [...state.harvests, { ...harvest, id: `h-${Date.now()}` }]
   })),
@@ -388,6 +405,8 @@ export const useStore = create<AppState>()(
   setCurrentUser: (userId) => set((state) => ({
     currentUser: state.users.find(u => u.id === userId) || null
   })),
+
+  logout: () => set({ currentUser: null }),
 
   addUser: (user) => set((state) => ({
     users: [...state.users, { ...user, id: `u-${Date.now()}` }]

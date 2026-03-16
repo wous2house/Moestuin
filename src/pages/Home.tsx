@@ -1,10 +1,13 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useStore, GridCell, Plant } from '../store/useStore';
 import { useWeather } from '../lib/weather';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { CloudRain, Sun, Cloud, Snowflake, CloudLightning, CloudFog, Droplets, Leaf, LayoutGrid, Plus, Minus, MoreVertical, Trash2, Calendar, User, Info, CheckCircle2, XCircle, AlertCircle, X, Camera, Bell } from 'lucide-react';
+import { CloudRain, Sun, Cloud, Snowflake, CloudLightning, CloudFog, Droplets, Leaf, LayoutGrid, Plus, Minus, MoreVertical, Trash2, Calendar, User, Info, CheckCircle2, XCircle, AlertCircle, X, Camera, Bell, Settings, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+import { HeaderActions } from '../components/HeaderActions';
 
 const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
   if (code <= 3) return <Sun className={cn(className, "text-[#5A8F5A]")} />;
@@ -16,14 +19,17 @@ const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
 };
 
 export default function Home() {
-  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen } = useStore();
+  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen, dismissedLogs, families, logout } = useStore();
   const { weather, loading } = useWeather();
   const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0]);
   const [isSelectingPlant, setIsSelectingPlant] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -202,21 +208,12 @@ export default function Home() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-6xl mx-auto space-y-8">
+    <div className="p-6 max-w-md md:max-w-6xl mx-auto flex flex-col h-full space-y-6">
       {/* Header */}
-      <header className="flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          {currentUser?.avatar ? (
-            <img src={currentUser.avatar} alt="Avatar" className="w-12 h-12 rounded-full border-2 border-white shadow-sm" />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-[#E8F0E8] flex items-center justify-center text-[#5A8F5A] font-bold text-lg shadow-sm">
-              {currentUser?.name.charAt(0)}
-            </div>
-          )}
-          <div>
-            <p className="text-sm text-stone-500">{getGreeting()}</p>
-            <h1 className="text-lg font-bold text-[#1A2E1A]">{currentUser?.name}</h1>
-          </div>
+      <header className="flex justify-between items-center shrink-0">
+        <div>
+          <p className="text-sm text-stone-500">{getGreeting()}</p>
+          <h1 className="text-2xl font-bold text-[#1A2E1A]">{currentUser?.name}</h1>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -234,21 +231,11 @@ export default function Home() {
             {weather?.isRaining ? <CloudRain className="w-6 h-6 text-blue-400" /> : <Sun className="w-6 h-6 text-[#5A8F5A]" />}
           </button>
           
-          <button 
-            onClick={() => setIsNotificationsModalOpen(true)}
-            className="hidden md:flex relative bg-white rounded-2xl p-3 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-          >
-            <Bell className="w-6 h-6 text-stone-600" />
-            {activeTasksCount > 0 && (
-              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
-                {activeTasksCount}
-              </span>
-            )}
-          </button>
+          <HeaderActions />
         </div>
       </header>
 
-      <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start">
+      <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-0">
         {/* Grid Section */}
         <section className="md:col-span-7 lg:col-span-8 mb-8 md:mb-0">
           <div className="flex justify-between items-center mb-4">

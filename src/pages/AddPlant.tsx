@@ -5,11 +5,15 @@ import { format } from 'date-fns';
 import { ArrowLeft, Check, Sun, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+import { HeaderActions } from '../components/HeaderActions';
+
 export default function AddPlant() {
   const navigate = useNavigate();
-  const { plants, grid, setGridCell, currentUser, tasks, setIsNotificationsModalOpen } = useStore();
+  const { plants, grid, setGridCell, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<PlantType>('Zaad');
@@ -32,25 +36,17 @@ export default function AddPlant() {
   const availableCells = grid.filter(c => !c.plantId);
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col bg-white rounded-3xl md:my-6 md:shadow-sm md:border md:border-stone-100 relative">
-      <header className="flex items-center justify-between mb-6 pt-4">
+    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col bg-white rounded-3xl md:my-6 md:shadow-sm md:border md:border-stone-100 relative space-y-6">
+      <header className="flex justify-between items-center shrink-0">
         <div className="flex items-center">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-stone-400 hover:text-stone-600">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-[#1A2E1A] ml-2">Nieuwe Plant</h1>
         </div>
-        <button 
-          onClick={() => setIsNotificationsModalOpen(true)}
-          className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-        >
-          <Bell className="w-5 h-5 text-stone-600" />
-          {activeTasksCount > 0 && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-              {activeTasksCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center space-x-3">
+          <HeaderActions />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto pb-24 md:pb-6 space-y-8 no-scrollbar">

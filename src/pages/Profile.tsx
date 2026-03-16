@@ -4,12 +4,16 @@ import { User, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash
 import { cn } from '../lib/utils';
 import { format, addDays } from 'date-fns';
 
+import { HeaderActions } from '../components/HeaderActions';
+
 export default function Profile() {
-  const { currentUser, users, families, vacationMode, vacationDelegateId, activateVacationMode, deactivateVacationMode, pushNotifications, setPushNotifications, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData, tasks, setIsNotificationsModalOpen } = useStore();
+  const { currentUser, users, families, vacationMode, vacationDelegateId, activateVacationMode, deactivateVacationMode, pushNotifications, setPushNotifications, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData, tasks, setIsNotificationsModalOpen, logout, logs, dismissedLogs } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dataInputRef = useRef<HTMLInputElement>(null);
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isAddingFamily, setIsAddingFamily] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
   const [selectedDelegateId, setSelectedDelegateId] = useState('');
@@ -152,23 +156,15 @@ export default function Profile() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col">
-      <header className="mb-6 pt-4 flex justify-between items-start">
+    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col space-y-6">
+      <header className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Profiel</h1>
           <p className="text-sm text-stone-500">Beheer je account en gezin</p>
         </div>
-        <button 
-          onClick={() => setIsNotificationsModalOpen(true)}
-          className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-        >
-          <Bell className="w-5 h-5 text-stone-600" />
-          {activeTasksCount > 0 && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-              {activeTasksCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center space-x-3">
+          <HeaderActions />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto pb-20 no-scrollbar">
@@ -191,10 +187,12 @@ export default function Profile() {
                 </div>
               </div>
               <h2 className="text-xl font-bold text-[#1A2E1A]">{currentUser?.name}</h2>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A] mt-1">{currentUser?.role}</p>
             </div>
 
-            <button className="w-full bg-red-50 text-red-600 rounded-2xl p-4 flex items-center justify-center space-x-2 font-bold hover:bg-red-100 transition-colors">
+            <button 
+              onClick={logout}
+              className="w-full bg-red-50 text-red-600 rounded-2xl p-4 flex items-center justify-center space-x-2 font-bold hover:bg-red-100 transition-colors"
+            >
               <LogOut className="w-5 h-5" />
               <span>Uitloggen</span>
             </button>
@@ -340,7 +338,6 @@ export default function Profile() {
                         )}
                         <div>
                           <p className="text-sm font-bold text-[#1A2E1A]">{user.name}</p>
-                          <p className="text-xs text-stone-500">{user.role}</p>
                         </div>
                       </div>
                       {user.role === 'Admin' && <Shield className="w-4 h-4 text-[#5A8F5A]" />}

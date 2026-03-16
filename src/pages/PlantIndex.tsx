@@ -4,12 +4,16 @@ import { Search, Info, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Tr
 import { cn } from '../lib/utils';
 import { generatePlantData } from '../lib/gemini';
 
+import { HeaderActions } from '../components/HeaderActions';
+
 export default function PlantIndex() {
-  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, currentUser, tasks, setIsNotificationsModalOpen } = useStore();
+  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'index' | 'zaden'>('index');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   
   const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);
   const [newPlantInput, setNewPlantInput] = useState('');
@@ -98,10 +102,10 @@ export default function PlantIndex() {
   );
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col">
-      <header className="mb-6 pt-4 flex justify-between items-start">
+    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col space-y-6">
+      <header className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2E1A]">Gewassen & Zaden</h1>
+          <h1 className="text-2xl font-bold text-[#1A2E1A]">Gewassen</h1>
           <p className="text-sm text-stone-500">Ontdek alles over je gewassen</p>
         </div>
         <div className="flex items-center space-x-3">
@@ -112,17 +116,7 @@ export default function PlantIndex() {
             <Plus className="w-5 h-5" />
             <span className="hidden md:inline">Nieuw Gewas</span>
           </button>
-          <button 
-            onClick={() => setIsNotificationsModalOpen(true)}
-            className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-          >
-            <Bell className="w-5 h-5 text-stone-600" />
-            {activeTasksCount > 0 && (
-              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                {activeTasksCount}
-              </span>
-            )}
-          </button>
+          <HeaderActions />
         </div>
       </header>
 

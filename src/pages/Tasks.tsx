@@ -5,12 +5,16 @@ import { CheckCircle2, Circle, Droplets, Scissors, Sprout, Wheat, MoreHorizontal
 import { format, isPast, isToday } from 'date-fns';
 import { nl } from 'date-fns/locale';
 
+import { HeaderActions } from '../components/HeaderActions';
+
 export default function Tasks() {
-  const { tasks, toggleTask, users, grid, plants, addTask, updateTask, currentUser, setIsNotificationsModalOpen } = useStore();
+  const { tasks, toggleTask, users, grid, plants, addTask, updateTask, currentUser, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
   const [isAddingTaskOpen, setIsAddingTaskOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [dateType, setDateType] = useState<'single' | 'period' | 'continuous'>('single');
   const [newTaskDueDate, setNewTaskDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -64,8 +68,8 @@ export default function Tasks() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col">
-      <header className="mb-6 pt-4 flex justify-between items-start">
+    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col space-y-6">
+      <header className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Taken</h1>
           <p className="text-sm text-stone-500">Wat moet er gebeuren in de tuin?</p>
@@ -78,17 +82,7 @@ export default function Tasks() {
             <Plus className="w-5 h-5" />
             <span className="hidden md:inline">Nieuwe Taak</span>
           </button>
-          <button 
-            onClick={() => setIsNotificationsModalOpen(true)}
-            className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-          >
-            <Bell className="w-5 h-5 text-stone-600" />
-            {activeTasksCount > 0 && (
-              <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                {activeTasksCount}
-              </span>
-            )}
-          </button>
+          <HeaderActions />
         </div>
       </header>
 

@@ -5,13 +5,17 @@ import { nl } from 'date-fns/locale';
 import { Wheat, Calendar, Search, Filter, X, PieChart, CheckCircle2, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+import { HeaderActions } from '../components/HeaderActions';
+
 export default function Harvests() {
-  const { harvests, users, families, plants, updateHarvest, setIsNotificationsModalOpen, tasks, currentUser } = useStore();
+  const { harvests, users, families, plants, updateHarvest, setIsNotificationsModalOpen, tasks, currentUser, logs, dismissedLogs } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlantFamily, setFilterPlantFamily] = useState<string>('all');
   const [filterUserFamily, setFilterUserFamily] = useState<string>('all');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const notificationsCount = activeTasksCount + unreadLogsCount;
   const [selectedHarvest, setSelectedHarvest] = useState<HarvestRecord | null>(null);
   const [distribution, setDistribution] = useState<Record<string, number>>({});
 
