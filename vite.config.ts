@@ -4,12 +4,18 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Controleer of we in Termux draaien (mobiel apparaat)
+const isTermux = process.env.PREFIX && process.env.PREFIX.includes('com.termux');
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
-  return {
-    plugins: [
-      react(), 
-      tailwindcss(),
+  
+  const plugins: any[] = [react(), tailwindcss()];
+  
+  // Voeg de PWA plugin alleen toe als we NIET in Termux zijn, 
+  // omdat de zware compressie (Terser) het geheugen van Termux laat crashen.
+  if (!isTermux) {
+    plugins.push(
       VitePWA({
         registerType: 'autoUpdate',
         devOptions: {
@@ -43,7 +49,11 @@ export default defineConfig(({mode}) => {
           skipWaiting: true
         }
       })
-    ],
+    );
+  }
+
+  return {
+    plugins,
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
@@ -53,7 +63,8 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      minify: false,
+      // Voorkom minification crashes op mobiel
+      minify: isTermux ? false : 'esbuild',
     },
     server: {
       port: 3004,
