@@ -135,7 +135,7 @@ interface AppState {
   setCurrentUser: (userId: string) => Promise<void>;
   logout: () => void;
   addUser: (user: Omit<User, 'id'>) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
+  updateUser: (id: string, updates: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => void;
   importData: (data: Partial<AppState>) => void;
   initializeFromDB: () => Promise<void>;
@@ -460,10 +460,34 @@ export const useStore = create<AppState>()(
     users: [...state.users, { ...user, id: `u-${Date.now()}` }]
   })),
 
-  updateUser: (id, updates) => set((state) => ({
-    users: state.users.map(u => u.id === id ? { ...u, ...updates } : u),
-    currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...updates } : state.currentUser
-  })),
+  updateUser: async (id, updates) => {
+    try {
+      const { pb } = await import('../lib/pb');
+      
+      // Map frontend fields to backend fields if necessary
+      const pbUpdates: any = { ...updates };
+      
+      // If we are updating the avatar, it will be a base64 string, but PB expects a File object
+      // For now, we only update text fields. Avatar upload needs FormData logic which is complex for this simple update.
+      if (updates.avatar) {
+         console.warn("Avatar update via store is currently local-only. Full PB file upload required.");
+      }
+
+      await pb.collection('users').update(id, pbUpdates);
+      
+      set((state) => ({
+        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u),
+        currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...updates } : state.currentUser
+      }));
+    } catch (e) {
+      console.error("Failed to update user in PB", e);
+      // Still update local state for optimism
+      set((state) => ({
+        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u),
+        currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...updates } : state.currentUser
+      }));
+    }
+  },
 
   deleteUser: (id) => set((state) => ({
     users: state.users.filter(u => u.id !== id),
