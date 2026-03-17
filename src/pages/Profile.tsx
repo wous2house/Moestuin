@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { useStore } from '../store/useStore';
-import { User, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash2, Camera, Download, Upload } from 'lucide-react';
+import { useStore, User } from '../store/useStore';
+import { User as UserIcon, Settings, LogOut, Bell, Shield, Plane, Users, Plus, Pencil, Trash2, Camera, Download, Upload } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format, addDays } from 'date-fns';
 

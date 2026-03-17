@@ -36,7 +36,7 @@ export default function PlantIndex() {
     setIsGenerating(false);
   };
 
-  const handleSavePlant = () => {
+  const handleSavePlant = async () => {
     if (generatedPlantData && generatedPlantData.name) {
       if (editingPlantId) {
         updatePlant(editingPlantId, {
@@ -49,7 +49,7 @@ export default function PlantIndex() {
           imageUrl: generatedPlantData.imageUrl,
         });
       } else {
-        const newPlantId = addPlant({
+        const newPlantId = await addPlant({
           name: generatedPlantData.name,
           family: (generatedPlantData.family as PlantFamily) || 'Overig',
           goodNeighbors: [],

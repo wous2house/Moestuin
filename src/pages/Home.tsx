@@ -264,7 +264,7 @@ export default function Home() {
                 <span className="text-sm font-bold text-[#1A2E1A]">Rijen (Hoogte)</span>
                 <div className="flex items-center space-x-3 bg-white rounded-lg border border-stone-200 p-1">
                   <button 
-                    onClick={() => { const res = updateGridSize(gridWidth, gridHeight - 1); if (!res.success) setLayoutError(res.message || null); else setLayoutError(null); }}
+                    onClick={async () => { const res = await updateGridSize(gridWidth, gridHeight - 1); if (!res.success) setLayoutError(res.message || null); else setLayoutError(null); }}
                     className="p-1 rounded-md hover:bg-stone-100 text-stone-600"
                   ><Minus className="w-4 h-4" /></button>
                   <span className="text-sm font-bold w-4 text-center">{gridHeight}</span>
@@ -278,7 +278,7 @@ export default function Home() {
                 <span className="text-sm font-bold text-[#1A2E1A]">Kolommen (Breedte)</span>
                 <div className="flex items-center space-x-3 bg-white rounded-lg border border-stone-200 p-1">
                   <button 
-                    onClick={() => { const res = updateGridSize(gridWidth - 1, gridHeight); if (!res.success) setLayoutError(res.message || null); else setLayoutError(null); }}
+                    onClick={async () => { const res = await updateGridSize(gridWidth - 1, gridHeight); if (!res.success) setLayoutError(res.message || null); else setLayoutError(null); }}
                     className="p-1 rounded-md hover:bg-stone-100 text-stone-600"
                   ><Minus className="w-4 h-4" /></button>
                   <span className="text-sm font-bold w-4 text-center">{gridWidth}</span>
