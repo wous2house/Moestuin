@@ -166,34 +166,38 @@ export const useStore = create<AppState>()(
     try {
       const { pb } = await import('../lib/pb');
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
-        pb.collection('plants').getFullList(),
-        pb.collection('grid').getFullList(),
-        pb.collection('tasks').getFullList(),
-        pb.collection('families').getFullList(),
-        pb.collection('users').getFullList(),
-        pb.collection('seedBox').getFullList(),
-        pb.collection('harvests').getFullList(),
-        pb.collection('logs').getFullList(),
+        pb.collection('plants').getFullList().catch(e => { console.error('plants error', e); return []; }),
+        pb.collection('grid').getFullList().catch(e => { console.error('grid error', e); return []; }),
+        pb.collection('tasks').getFullList().catch(e => { console.error('tasks error', e); return []; }),
+        pb.collection('families').getFullList().catch(e => { console.error('families error', e); return []; }),
+        pb.collection('users').getFullList().catch(e => { console.error('users error', e); return []; }),
+        pb.collection('seedBox').getFullList().catch(e => { console.error('seedBox error', e); return []; }),
+        pb.collection('harvests').getFullList().catch(e => { console.error('harvests error', e); return []; }),
+        pb.collection('logs').getFullList().catch(e => { console.error('logs error', e); return []; }),
       ]);
 
       let fetchedGrid = grid as any[];
       
       // Auto-generate a 4x4 grid if completely empty
-      if (fetchedGrid.length === 0) {
-        console.log('Generating initial grid in PocketBase...');
-        const newCells = [];
-        for (let y = 0; y < 4; y++) {
-          for (let x = 0; x < 4; x++) {
-            const cell = {
-              x,
-              y,
-              sunExposure: y < 2 ? 'Zon' : 'Halfschaduw'
-            };
-            const record = await pb.collection('grid').create(cell);
-            newCells.push(record);
+      if (fetchedGrid.length === 0 && pb.authStore.isValid) {
+        try {
+          console.log('Generating initial grid in PocketBase...');
+          const newCells = [];
+          for (let y = 0; y < 4; y++) {
+            for (let x = 0; x < 4; x++) {
+              const cell = {
+                x,
+                y,
+                sunExposure: y < 2 ? 'Zon' : 'Halfschaduw'
+              };
+              const record = await pb.collection('grid').create(cell);
+              newCells.push(record);
+            }
           }
+          fetchedGrid = newCells;
+        } catch (gridErr: any) {
+          console.error('Failed to generate initial grid', gridErr?.response || gridErr);
         }
-        fetchedGrid = newCells;
       }
 
       set({
@@ -201,13 +205,13 @@ export const useStore = create<AppState>()(
         grid: fetchedGrid as any,
         tasks: tasks as any,
         families: families as any,
-        users: users.map(u => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
+        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
         seedBox: seedBox as any,
         harvests: harvests as any,
         logs: logs as any,
       });
-    } catch (e) {
-      console.error("Failed to initialize from DB", e);
+    } catch (e: any) {
+      console.error("Failed to initialize from DB completely", e?.response || e);
     }
   },
 
