@@ -42,6 +42,10 @@ export interface Task {
   originalAssignedTo?: string | null;
   relatedCellId: string | null;
   type: 'Water' | 'Oogst' | 'Snoei' | 'Zaai' | 'Overig';
+  recurring?: {
+    interval: number;
+    unit: 'dagen' | 'weken' | 'maanden';
+  } | null;
 }
 
 export interface FamilyGroup {
@@ -52,6 +56,7 @@ export interface FamilyGroup {
 export interface User {
   id: string;
   name: string;
+  password?: string;
   role: 'Admin' | 'Lid';
   avatar?: string;
   familyId: string;
@@ -287,11 +292,34 @@ export const useStore = create<AppState>()(
     }
     return { seedBox: [...state.seedBox, seed] };
   }),
-  toggleTask: (taskId) => set((state) => ({
-    tasks: state.tasks.map((t) =>
-      t.id === taskId ? { ...t, completed: !t.completed } : t
-    ),
-  })),
+  toggleTask: (taskId) => set((state) => {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return state;
+
+    if (!task.completed && task.recurring && task.dueDate) {
+      const newDate = new Date(task.dueDate);
+      if (task.recurring.unit === 'dagen') newDate.setDate(newDate.getDate() + task.recurring.interval);
+      else if (task.recurring.unit === 'weken') newDate.setDate(newDate.getDate() + task.recurring.interval * 7);
+      else if (task.recurring.unit === 'maanden') newDate.setMonth(newDate.getMonth() + task.recurring.interval);
+      
+      const newTask = {
+        ...task,
+        id: `t-${Date.now()}`,
+        dueDate: format(newDate, 'yyyy-MM-dd'),
+        completed: false
+      };
+      
+      return {
+        tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null } : t).concat(newTask)
+      };
+    }
+
+    return {
+      tasks: state.tasks.map((t) =>
+        t.id === taskId ? { ...t, completed: !t.completed } : t
+      ),
+    };
+  }),
 
   activateVacationMode: (delegateId, startDate, endDate) => set((state) => ({
     vacationMode: true,

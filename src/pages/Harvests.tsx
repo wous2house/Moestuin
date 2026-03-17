@@ -105,17 +105,9 @@ export default function Harvests() {
           </h1>
           <p className="text-stone-500 mt-2">Overzicht van alles wat je hebt geoogst en verdeeld.</p>
         </div>
-        <button 
-          onClick={() => setIsNotificationsModalOpen(true)}
-          className="hidden md:flex relative bg-white rounded-xl p-2.5 shadow-sm border border-stone-100 hover:bg-stone-50 transition-colors"
-        >
-          <Bell className="w-5 h-5 text-stone-600" />
-          {activeTasksCount > 0 && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-              {activeTasksCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center space-x-3">
+          <HeaderActions />
+        </div>
       </header>
 
       <div className="flex flex-col md:flex-row gap-4 mb-6 flex-wrap">

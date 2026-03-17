@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore, Plant, PlantFamily, SunPreference } from '../store/useStore';
-import { Search, Info, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2, Bell } from 'lucide-react';
+import { Search, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2, Bell } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { generatePlantData } from '../lib/gemini';
 
@@ -388,7 +388,6 @@ export default function PlantIndex() {
                 </div>
                 
                 <div className="mt-4 pt-4 border-t border-stone-100 flex items-start space-x-2 flex-1">
-                  <Info className="w-4 h-4 text-stone-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-stone-500 leading-relaxed">
                     Goede buren: {plant.goodNeighbors.map(id => {
                       const p = plants.find(p => p.id === id);

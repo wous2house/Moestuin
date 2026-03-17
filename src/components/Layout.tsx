@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { TreeDeciduous, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat, LogOut } from 'lucide-react';
+import { TreeDeciduous, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format } from 'date-fns';
 import { nl } from 'date-fns/locale';
@@ -87,16 +87,6 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-
-        <div className="p-4 border-t border-stone-200">
-          <button 
-            onClick={() => useStore.getState().logout()}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors font-medium text-stone-500 hover:bg-red-50 hover:text-red-600"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Uitloggen</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content Area */}

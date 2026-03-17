@@ -72,11 +72,16 @@ export default function Profile() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserRole, setNewUserRole] = useState<'Admin' | 'Lid'>('Lid');
   const [newUserFamilyId, setNewUserFamilyId] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editUserName, setEditUserName] = useState('');
   const [editUserRole, setEditUserRole] = useState<'Admin' | 'Lid'>('Lid');
   const [editUserFamilyId, setEditUserFamilyId] = useState('');
+  const [editUserPassword, setEditUserPassword] = useState('');
+
+  const [isChangingOwnPassword, setIsChangingOwnPassword] = useState(false);
+  const [ownNewPassword, setOwnNewPassword] = useState('');
 
   const currentFamily = families.find(f => f.id === currentUser?.familyId);
   const familyMembers = users.filter(u => u.familyId === currentUser?.familyId);
@@ -130,22 +135,36 @@ export default function Profile() {
       useStore.getState().addUser({
         name: newUserName.trim(),
         role: newUserRole,
-        familyId: newUserFamilyId
+        familyId: newUserFamilyId,
+        password: newUserPassword || undefined
       });
       setNewUserName('');
       setNewUserRole('Lid');
+      setNewUserPassword('');
       setIsAddingUser(false);
     }
   };
 
   const handleUpdateUser = (id: string) => {
     if (editUserName.trim() && editUserFamilyId) {
-      useStore.getState().updateUser(id, {
+      const updates: Partial<User> = {
         name: editUserName.trim(),
         role: editUserRole,
         familyId: editUserFamilyId
-      });
+      };
+      if (editUserPassword) {
+        updates.password = editUserPassword;
+      }
+      useStore.getState().updateUser(id, updates);
       setEditingUserId(null);
+    }
+  };
+
+  const handleUpdateOwnPassword = () => {
+    if (currentUser && ownNewPassword) {
+      updateUser(currentUser.id, { password: ownNewPassword });
+      setIsChangingOwnPassword(false);
+      setOwnNewPassword('');
     }
   };
 
@@ -156,7 +175,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col space-y-6">
+    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col space-y-6">
       <header className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Profiel</h1>
@@ -188,6 +207,8 @@ export default function Profile() {
               </div>
               <h2 className="text-xl font-bold text-[#1A2E1A]">{currentUser?.name}</h2>
             </div>
+
+
 
             <button 
               onClick={logout}
@@ -355,51 +376,63 @@ export default function Profile() {
                 </div>
                 <div className="bg-white border border-stone-100 rounded-2xl divide-y divide-stone-50 shadow-sm">
                   {users.map(user => (
-                    <div key={user.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div key={user.id} className="p-4">
                       {editingUserId === user.id ? (
-                        <div className="flex-1 flex flex-col md:flex-row gap-2 w-full items-center">
-                          <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById(`avatar-upload-${user.id}`)?.click()}>
-                            <input type="file" id={`avatar-upload-${user.id}`} className="hidden" accept="image/*" onChange={(e) => handleAdminAvatarUpload(e, user.id)} />
-                            {user.avatar ? (
-                              <img src={user.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-[#E8F0E8] flex items-center justify-center text-sm font-bold text-[#5A8F5A]">
-                                {user.name.charAt(0)}
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
+                            <div className="relative group cursor-pointer shrink-0" onClick={() => document.getElementById(`avatar-upload-${user.id}`)?.click()}>
+                              <input type="file" id={`avatar-upload-${user.id}`} className="hidden" accept="image/*" onChange={(e) => handleAdminAvatarUpload(e, user.id)} />
+                              {user.avatar ? (
+                                <img src={user.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-[#E8F0E8] flex items-center justify-center text-sm font-bold text-[#5A8F5A]">
+                                  {user.name.charAt(0)}
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-4 h-4 text-white" />
                               </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Camera className="w-4 h-4 text-white" />
                             </div>
+                            <input 
+                              type="text" 
+                              className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                              value={editUserName}
+                              onChange={(e) => setEditUserName(e.target.value)}
+                            />
+                            <select 
+                              className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                              value={editUserRole}
+                              onChange={(e) => setEditUserRole(e.target.value as 'Admin' | 'Lid')}
+                            >
+                              <option value="Lid">Lid</option>
+                              <option value="Admin">Admin</option>
+                            </select>
+                            <select 
+                              className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                              value={editUserFamilyId}
+                              onChange={(e) => setEditUserFamilyId(e.target.value)}
+                            >
+                              <option value="" disabled>Selecteer groep</option>
+                              {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </select>
                           </div>
-                          <input 
-                            type="text" 
-                            className="flex-1 bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                            value={editUserName}
-                            onChange={(e) => setEditUserName(e.target.value)}
-                          />
-                          <select 
-                            className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                            value={editUserRole}
-                            onChange={(e) => setEditUserRole(e.target.value as 'Admin' | 'Lid')}
-                          >
-                            <option value="Lid">Lid</option>
-                            <option value="Admin">Admin</option>
-                          </select>
-                          <select 
-                            className="bg-stone-50 border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                            value={editUserFamilyId}
-                            onChange={(e) => setEditUserFamilyId(e.target.value)}
-                          >
-                            <option value="" disabled>Selecteer groep</option>
-                            {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                          </select>
-                          <div className="flex space-x-2">
-                            <button onClick={() => handleUpdateUser(user.id)} className="flex-1 bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
-                            <button onClick={() => setEditingUserId(null)} className="flex-1 bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
+                          
+                          <div className="flex flex-col sm:flex-row gap-2 mt-2 pt-4 border-t border-stone-50">
+                            <input 
+                              type="password"
+                              placeholder="Nieuw wachtwoord (overschrijven)"
+                              className="flex-1 bg-[#F5F7F4] border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                              value={editUserPassword}
+                              onChange={(e) => setEditUserPassword(e.target.value)}
+                            />
+                            <div className="flex space-x-2">
+                              <button onClick={() => handleUpdateUser(user.id)} className="bg-[#5A8F5A] text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A] transition-colors">Opslaan</button>
+                              <button onClick={() => { setEditingUserId(null); setEditUserPassword(''); }} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold hover:bg-stone-300 transition-colors">Annuleren</button>
+                            </div>
                           </div>
                         </div>
                       ) : (
-                        <>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
                           <div className="flex items-center space-x-3">
                             {user.avatar ? (
                               <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" />
@@ -434,12 +467,12 @@ export default function Profile() {
                               </button>
                             )}
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   ))}
                   
-                  <div className="p-4 bg-stone-50 rounded-b-2xl">
+                    <div className="p-4 bg-stone-50 rounded-b-2xl">
                     {!isAddingUser ? (
                       <button 
                         onClick={() => {
@@ -452,34 +485,45 @@ export default function Profile() {
                         <span>Nieuwe gebruiker toevoegen</span>
                       </button>
                     ) : (
-                      <div className="flex flex-col md:flex-row gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Naam"
-                          className="flex-1 bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                          value={newUserName}
-                          onChange={(e) => setNewUserName(e.target.value)}
-                          autoFocus
-                        />
-                        <select 
-                          className="bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                          value={newUserRole}
-                          onChange={(e) => setNewUserRole(e.target.value as 'Admin' | 'Lid')}
-                        >
-                          <option value="Lid">Lid</option>
-                          <option value="Admin">Admin</option>
-                        </select>
-                        <select 
-                          className="bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
-                          value={newUserFamilyId}
-                          onChange={(e) => setNewUserFamilyId(e.target.value)}
-                        >
-                          <option value="" disabled>Selecteer groep</option>
-                          {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                        </select>
-                        <div className="flex space-x-2">
-                          <button onClick={handleAddUser} className="flex-1 bg-[#5A8F5A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A]">Opslaan</button>
-                          <button onClick={() => setIsAddingUser(false)} className="flex-1 bg-stone-200 text-stone-600 px-3 py-2 rounded-xl text-sm font-bold hover:bg-stone-300">Annuleren</button>
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col md:flex-row gap-2">
+                          <input 
+                            type="text" 
+                            placeholder="Naam"
+                            className="flex-1 bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                            value={newUserName}
+                            onChange={(e) => setNewUserName(e.target.value)}
+                            autoFocus
+                          />
+                          <select 
+                            className="bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                            value={newUserRole}
+                            onChange={(e) => setNewUserRole(e.target.value as 'Admin' | 'Lid')}
+                          >
+                            <option value="Lid">Lid</option>
+                            <option value="Admin">Admin</option>
+                          </select>
+                          <select 
+                            className="bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                            value={newUserFamilyId}
+                            onChange={(e) => setNewUserFamilyId(e.target.value)}
+                          >
+                            <option value="" disabled>Selecteer groep</option>
+                            {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-stone-200">
+                          <input 
+                            type="password"
+                            placeholder="Wachtwoord"
+                            className="flex-1 bg-white border border-stone-200 rounded-xl p-2 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A]"
+                            value={newUserPassword}
+                            onChange={(e) => setNewUserPassword(e.target.value)}
+                          />
+                          <div className="flex space-x-2">
+                            <button onClick={handleAddUser} className="bg-[#5A8F5A] text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-[#4A7A4A] transition-colors">Opslaan</button>
+                            <button onClick={() => { setIsAddingUser(false); setNewUserPassword(''); }} className="bg-stone-200 text-stone-600 px-6 py-2 rounded-xl text-sm font-bold hover:bg-stone-300 transition-colors">Annuleren</button>
+                          </div>
                         </div>
                       </div>
                     )}

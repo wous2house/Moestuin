@@ -1,0 +1,55 @@
+const http = require('http');
+const httpProxy = require('http-proxy');
+const { spawn } = require('child_process');
+
+// PAD NAAR JE POCKETBASE EXECUTABLE
+// Gebaseerd op: /var/www/vhosts/jthv.nl/pocketbase/pocketbase
+const POCKETBASE_PATH = '/var/www/vhosts/jthv.nl/pocketbase/pocketbase';
+const POCKETBASE_PORT = 8090;
+const POCKETBASE_URL = `http://127.0.0.1:${POCKETBASE_PORT}`;
+
+// De poort die Plesk (Phusion Passenger) toewijst aan deze Node-app
+const PORT = process.env.PORT || 3000;
+
+// 1. START POCKETBASE ALS HET NOG NIET DRAAIT
+console.log('PocketBase wordt gestart...');
+const pb = spawn(POCKETBASE_PATH, ['serve', `--http=127.0.0.1:${POCKETBASE_PORT}`], {
+    detached: true,
+    stdio: 'ignore'
+});
+
+pb.on('error', (err) => {
+    console.error('Kon PocketBase niet starten. Controleer of het bestand uitvoerbaar is:', err);
+});
+
+pb.unref();
+
+// 2. CONFIGUREER DE PROXY
+const proxy = httpProxy.createProxyServer({
+    target: POCKETBASE_URL,
+    ws: true, // Belangrijk voor Realtime notificaties
+    xfwd: true
+});
+
+// Foutafhandeling voor de proxy
+proxy.on('error', (err, req, res) => {
+    console.error('Proxy fout:', err);
+    if (res.writeHead) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+    }
+    res.end('PocketBase start op of is niet bereikbaar. Vernieuw de pagina over enkele seconden.');
+});
+
+// 3. MAAK DE SERVER DIE ALLES DOORSTUURT
+const server = http.createServer((req, res) => {
+    proxy.web(req, res);
+});
+
+// WebSocket support voor realtime updates
+server.on('upgrade', (req, socket, head) => {
+    proxy.ws(req, socket, head);
+});
+
+server.listen(PORT, () => {
+    console.log(`Node.js Proxy actief op poort ${PORT}. Doorgave naar PocketBase op ${POCKETBASE_PORT}`);
+});

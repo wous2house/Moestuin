@@ -1,37 +1,69 @@
+import { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { LogIn } from 'lucide-react';
 
 export default function Login() {
   const { users, setCurrentUser } = useStore();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase());
+
+    if (!user) {
+      setError('Gebruiker niet gevonden');
+      return;
+    }
+
+    if (user.password && user.password !== password) {
+      setError('Onjuist wachtwoord');
+      return;
+    }
+
+    // If user exists and either has no password or password matches
+    setCurrentUser(user.id);
+  };
 
   return (
     <div className="min-h-screen bg-[#EAF2EA] flex flex-col items-center justify-center p-6">
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-8 flex flex-col items-center">
         <img src="/logo-transparent.png" alt="Moestuin Logo" className="w-32 h-32 object-contain mb-6 drop-shadow-sm" />
         <h1 className="text-3xl font-bold text-[#1A2E1A] mb-2 font-serif text-center">Moestuin JTHV</h1>
-        <p className="text-stone-500 mb-8 text-center">Kies je profiel om in te loggen</p>
+        <p className="text-stone-500 mb-8 text-center">Log in op je account</p>
 
-        <div className="w-full space-y-3">
-          {users.map(user => (
-            <button
-              key={user.id}
-              onClick={() => setCurrentUser(user.id)}
-              className="w-full flex items-center p-4 bg-[#F5F7F4] hover:bg-[#E8F0E8] border border-stone-200 hover:border-[#5A8F5A]/30 rounded-2xl transition-all group"
-            >
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm group-hover:border-[#5A8F5A]" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-[#E8F0E8] flex items-center justify-center text-xl font-bold text-[#5A8F5A] border-2 border-white shadow-sm group-hover:border-[#5A8F5A] group-hover:bg-[#5A8F5A] group-hover:text-white transition-colors">
-                  {user.name.charAt(0)}
-                </div>
-              )}
-              <div className="ml-4 text-left flex-1">
-                <p className="text-lg font-bold text-[#1A2E1A]">{user.name}</p>
-              </div>
-              <LogIn className="w-5 h-5 text-stone-400 group-hover:text-[#5A8F5A]" />
-            </button>
-          ))}
-        </div>
+        <form onSubmit={handleLogin} className="w-full space-y-4">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Gebruikersnaam</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Je naam"
+              className="w-full bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Wachtwoord</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Je wachtwoord"
+              className="w-full bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
+            />
+            {error && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{error}</p>}
+          </div>
+          <button
+            type="submit"
+            className="w-full py-4 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors mt-2"
+          >
+            Inloggen
+          </button>
+        </form>
       </div>
     </div>
   );

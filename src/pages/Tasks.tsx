@@ -16,12 +16,14 @@ export default function Tasks() {
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [dateType, setDateType] = useState<'single' | 'period' | 'continuous'>('single');
+  const [dateType, setDateType] = useState<'single' | 'period' | 'continuous' | 'recurring'>('single');
   const [newTaskDueDate, setNewTaskDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newTaskEndDate, setNewTaskEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newTaskType, setNewTaskType] = useState('Water');
   const [newTaskAssignedTo, setNewTaskAssignedTo] = useState<string>('');
   const [newTaskCellId, setNewTaskCellId] = useState<string>('');
+  const [recurringInterval, setRecurringInterval] = useState(1);
+  const [recurringUnit, setRecurringUnit] = useState<'dagen' | 'weken' | 'maanden'>('weken');
 
   const [reassigningTaskId, setReassigningTaskId] = useState<string | null>(null);
 
@@ -54,7 +56,8 @@ export default function Tasks() {
         completed: false,
         assignedTo: newTaskAssignedTo || null,
         relatedCellId: newTaskCellId || null,
-        type: newTaskType as any
+        type: newTaskType as any,
+        recurring: dateType === 'recurring' ? { interval: recurringInterval, unit: recurringUnit } : null
       });
       setIsAddingTaskOpen(false);
       setNewTaskTitle('');
@@ -64,6 +67,8 @@ export default function Tasks() {
       setNewTaskEndDate(format(new Date(), 'yyyy-MM-dd'));
       setNewTaskAssignedTo('');
       setNewTaskCellId('');
+      setRecurringInterval(1);
+      setRecurringUnit('weken');
     }
   };
 
@@ -146,8 +151,9 @@ export default function Tasks() {
                     
                     {assignedUser ? (
                       <button 
-                        onClick={() => setReassigningTaskId(task.id)}
-                        className="flex items-center space-x-1.5 bg-[#F5F7F4] hover:bg-[#E8F0E8] transition-colors px-2 py-1 rounded-md"
+                        onClick={() => !task.completed && setReassigningTaskId(task.id)}
+                        disabled={task.completed}
+                        className="flex items-center space-x-1.5 bg-[#F5F7F4] hover:bg-[#E8F0E8] transition-colors px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {assignedUser.avatar ? (
                           <img src={assignedUser.avatar} alt="" className="w-4 h-4 rounded-full" />
@@ -160,8 +166,9 @@ export default function Tasks() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => setReassigningTaskId(task.id)}
-                        className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-2 py-1 rounded-md hover:bg-[#D0E0D0] transition-colors"
+                        onClick={() => !task.completed && setReassigningTaskId(task.id)}
+                        disabled={task.completed}
+                        className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-2 py-1 rounded-md hover:bg-[#D0E0D0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Toewijzen
                       </button>
@@ -221,6 +228,7 @@ export default function Tasks() {
                   >
                     <option value="single">Specifieke Datum</option>
                     <option value="period">Periode (Van-Tot)</option>
+                    <option value="recurring">Periodiek (Herhalend)</option>
                     <option value="continuous">Doorlopend</option>
                   </select>
                 </div>
@@ -239,6 +247,33 @@ export default function Tasks() {
                   </select>
                 </div>
               </div>
+
+              {dateType === 'recurring' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Elke</label>
+                    <input 
+                      type="number"
+                      min="1"
+                      value={recurringInterval}
+                      onChange={(e) => setRecurringInterval(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Eenheid</label>
+                    <select 
+                      value={recurringUnit}
+                      onChange={(e) => setRecurringUnit(e.target.value as any)}
+                      className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
+                    >
+                      <option value="dagen">Dagen</option>
+                      <option value="weken">Weken</option>
+                      <option value="maanden">Maanden</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {dateType !== 'continuous' && (
                 <div className="grid grid-cols-2 gap-3">

@@ -1,0 +1,12 @@
+{
+  "name": "moestuin-pb-proxy",
+  "version": "1.0.0",
+  "description": "Proxy en starter voor PocketBase op Plesk",
+  "main": "app.js",
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  },
+  "scripts": {
+    "start": "node app.js"
+  }
+}

@@ -292,7 +292,7 @@ export default function Home() {
 
           <div className="w-full overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
             <div 
-              className="grid gap-3 md:gap-4 lg:gap-6 min-w-max md:min-w-0" 
+              className="grid gap-3 md:gap-4 lg:gap-6 min-w-max md:min-w-0 bg-[#E6D5B8] p-4 md:p-6 rounded-[2.5rem] border-8 border-[#C19A6B]/20 shadow-inner" 
               style={{ gridTemplateColumns: `repeat(${gridWidth}, minmax(4.5rem, 1fr))` }}
             >
               {grid.map(cell => {
@@ -308,13 +308,17 @@ export default function Home() {
                 return (
                   <button
                     key={cell.id}
-                    onClick={() => setSelectedCell(cell)}
+                    onClick={() => {
+                      setSelectedCell(cell);
+                      if (!cell.plantId) setIsSelectingPlant(true);
+                    }}
                     className={cn(
                       "relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all",
                       isSelected 
-                        ? "bg-[#E8F0E8] border-2 border-[#5A8F5A] shadow-sm" 
-                        : "bg-white border border-stone-100 hover:border-[#5A8F5A]/30 shadow-sm",
-                      !plant && "border-dashed w-[4.5rem] md:w-auto",
+                        ? "bg-[#E8F0E8] border-2 border-[#5A8F5A] shadow-md z-10 scale-105" 
+                        : plant 
+                          ? "bg-white border border-stone-100 hover:border-[#5A8F5A]/30 shadow-sm"
+                          : "bg-[#8B7355]/10 border-2 border-dashed border-[#8B7355]/20 hover:bg-[#8B7355]/20 w-[4.5rem] md:w-auto shadow-inner",
                       !isSelected && cellIsHarvestTime && "border-2 border-[#5A8F5A] animate-pulse shadow-[0_0_10px_rgba(90,143,90,0.3)]"
                     )}
                   >
@@ -560,57 +564,16 @@ export default function Home() {
             </>
           ) : (
             <div className="py-4">
-              {!isSelectingPlant ? (
-                <div className="text-center py-4">
-                  <p className="text-stone-500 mb-6 font-medium">Dit vak is nog leeg.</p>
-                  <button 
-                    onClick={() => setIsSelectingPlant(true)}
-                    className="bg-[#5A8F5A] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[#4A7A4A] transition-colors shadow-sm w-full"
-                  >
-                    Plant Toevoegen
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-stone-500">Kies een plant</h3>
-                    <button 
-                      onClick={() => setIsSelectingPlant(false)}
-                      className="text-xs font-bold text-stone-400 hover:text-stone-600"
-                    >
-                      Annuleren
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-2 no-scrollbar">
-                    {plants.map(plant => (
-                      <button
-                        key={plant.id}
-                        onClick={() => handleAssignPlant(plant.id)}
-                        className="p-4 rounded-2xl border border-stone-100 bg-white hover:border-[#5A8F5A]/30 hover:bg-[#F5F7F4] text-left transition-colors flex flex-col shadow-sm"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-2xl">{plant.icon}</span>
-                            <div>
-                              <span className="font-bold text-[#1A2E1A] block">{plant.name}</span>
-                              <span className="text-[10px] font-bold text-[#5A8F5A] uppercase">{plant.family}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1 bg-amber-50 px-2 py-1 rounded-md">
-                            <Sun className="w-3 h-3 text-amber-500" />
-                            <span className="text-[10px] font-bold text-amber-700">{plant.sunPreference}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="text-[10px] text-stone-500 space-y-1 mt-2">
-                          <p><span className="font-bold text-[#5A8F5A]">✓ Goed met:</span> {plant.goodNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Alles'}</p>
-                          <p><span className="font-bold text-red-400">✗ Slecht met:</span> {plant.badNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Niets'}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="text-center py-4">
+                <p className="text-stone-500 mb-6 font-medium">Dit vak is nog leeg.</p>
+                <button 
+                  onClick={() => setIsSelectingPlant(true)}
+                  className="bg-[#5A8F5A] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[#4A7A4A] transition-colors shadow-sm w-full flex items-center justify-center space-x-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span>Plant Toevoegen</span>
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -701,9 +664,8 @@ export default function Home() {
             </div>
             <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Gewaterd</h2>
             <p className="text-sm text-stone-500 mb-6">
-              Dit gewas heeft voldoende water gekregen door <span className="font-bold text-[#5A8F5A]">{getUser(lastWateredLog.userId)?.name || 'Onbekend'}</span> op {format(new Date(lastWateredLog.date), 'd MMM om HH:mm', { locale: nl })}.
-            </p>
-            <button 
+              Dit gewas heeft voldoende water gekregen door <span className="font-bold text-[#5A8F5A]">{getUser(lastWateredLog.userId)?.name || 'Onbekend'}</span> op {format(new Date(lastWateredLog.date), "d MMM 'om' HH:mm", { locale: nl })}.
+            </p>            <button 
               onClick={() => setIsWateredModalOpen(false)}
               className="w-full py-3 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors"
             >
@@ -769,6 +731,51 @@ export default function Home() {
             <X className="w-6 h-6" />
           </button>
           <img src={selectedPhotoUrl} alt="Volledige weergave" className="max-w-full max-h-full rounded-2xl object-contain animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
+      {/* Plant Selection Modal */}
+      {isSelectingPlant && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col relative animate-in fade-in zoom-in-95 max-h-[90vh]">
+            <button 
+              onClick={() => setIsSelectingPlant(false)}
+              className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-1">Plant Toevoegen</h2>
+            <p className="text-sm text-stone-500 mb-6">Kies een gewas voor vak {selectedCell && `${String.fromCharCode(65 + selectedCell.y)}${selectedCell.x + 1}`}</p>
+            
+            <div className="grid grid-cols-1 gap-3 overflow-y-auto pr-2 no-scrollbar">
+              {plants.map(plant => (
+                <button
+                  key={plant.id}
+                  onClick={() => handleAssignPlant(plant.id)}
+                  className="p-4 rounded-2xl border border-stone-100 bg-white hover:border-[#5A8F5A]/30 hover:bg-[#F5F7F4] text-left transition-colors flex flex-col shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{plant.icon}</span>
+                      <div>
+                        <span className="font-bold text-[#1A2E1A] block">{plant.name}</span>
+                        <span className="text-[10px] font-bold text-[#5A8F5A] uppercase">{plant.family}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 bg-amber-50 px-2 py-1 rounded-md">
+                      <Sun className="w-3 h-3 text-amber-500" />
+                      <span className="text-[10px] font-bold text-amber-700">{plant.sunPreference}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-[10px] text-stone-500 space-y-1 mt-2">
+                    <p><span className="font-bold text-[#5A8F5A]">✓ Goed met:</span> {plant.goodNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Alles'}</p>
+                    <p><span className="font-bold text-red-400">✗ Slecht met:</span> {plant.badNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Niets'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
