@@ -198,7 +198,7 @@ export default function Profile() {
                   <img src={currentUser.avatar} alt="Avatar" className="w-24 h-24 rounded-full border-4 border-[#5A8F5A] mb-4 shadow-sm object-cover" />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-[#E8F0E8] flex items-center justify-center text-3xl font-bold text-[#5A8F5A] mb-4 shadow-sm">
-                    {currentUser?.name.charAt(0)}
+                    {currentUser?.name?.charAt(0) || '?'}
                   </div>
                 )}
                 <div className="absolute inset-0 bg-black/40 rounded-full mb-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -354,7 +354,7 @@ export default function Profile() {
                           <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-[#F5F7F4] flex items-center justify-center text-sm font-bold text-stone-600">
-                            {user.name.charAt(0)}
+                            {user.name?.charAt(0) || '?'}
                           </div>
                         )}
                         <div>
@@ -386,7 +386,7 @@ export default function Profile() {
                                 <img src={user.avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
                               ) : (
                                 <div className="w-10 h-10 rounded-full bg-[#E8F0E8] flex items-center justify-center text-sm font-bold text-[#5A8F5A]">
-                                  {user.name.charAt(0)}
+                                  {user.name?.charAt(0) || '?'}
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -438,7 +438,7 @@ export default function Profile() {
                               <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" />
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-[#F5F7F4] flex items-center justify-center text-sm font-bold text-stone-600">
-                                {user.name.charAt(0)}
+                                {user.name?.charAt(0) || '?'}
                               </div>
                             )}
                             <div>

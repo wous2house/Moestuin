@@ -36,7 +36,7 @@ export function HeaderActions() {
             <img src={currentUser.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
           ) : (
             <span className="text-[#5A8F5A] font-bold text-lg">
-              {currentUser?.name.charAt(0)}
+              {currentUser?.name?.charAt(0) || '?'}
             </span>
           )}
         </button>

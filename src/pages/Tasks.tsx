@@ -159,7 +159,7 @@ export default function Tasks() {
                           <img src={assignedUser.avatar} alt="" className="w-4 h-4 rounded-full" />
                         ) : (
                           <div className="w-4 h-4 rounded-full bg-[#E8F0E8] flex items-center justify-center text-[8px] font-bold text-[#5A8F5A]">
-                            {assignedUser.name.charAt(0)}
+                            {assignedUser.name?.charAt(0) || '?'}
                           </div>
                         )}
                         <span className="text-xs font-bold text-stone-600">{assignedUser.name}</span>
@@ -374,7 +374,7 @@ export default function Tasks() {
                     <img src={u.avatar} alt="" className="w-6 h-6 rounded-full" />
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-[#E8F0E8] flex items-center justify-center text-[10px] font-bold text-[#5A8F5A]">
-                      {u.name.charAt(0)}
+                      {u.name?.charAt(0) || '?'}
                     </div>
                   )}
                   <span>{u.name}</span>

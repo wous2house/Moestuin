@@ -201,7 +201,7 @@ export const useStore = create<AppState>()(
         grid: fetchedGrid as any,
         tasks: tasks as any,
         families: families as any,
-        users: users.map(u => ({ id: u.id, name: u.name || u.username, role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
+        users: users.map(u => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
         seedBox: seedBox as any,
         harvests: harvests as any,
         logs: logs as any,
@@ -435,7 +435,7 @@ export const useStore = create<AppState>()(
       set((state) => ({
         currentUser: {
           id: user.id,
-          name: user.name || user.username,
+          name: user.name || user.username || user.email || 'Gebruiker',
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
           avatar: user.avatar ? pb.files.getUrl(user, user.avatar) : undefined
