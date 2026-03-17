@@ -539,11 +539,11 @@ export const useStore = create<AppState>()(
   },
 
   dismissLog: (userId, logId) => set((state) => {
-    const userDismissed = state.dismissedLogs[userId] || [];
+    const userDismissed = state.dismissedLogs?.[userId] || [];
     if (!userDismissed.includes(logId)) {
       return {
         dismissedLogs: {
-          ...state.dismissedLogs,
+          ...(state.dismissedLogs || {}),
           [userId]: [...userDismissed, logId]
         }
       };
