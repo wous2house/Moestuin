@@ -9,7 +9,6 @@
         "id": "plants_name",
         "name": "name",
         "type": "text",
-        "system": false,
         "required": true,
         "options": {
           "min": null,
@@ -21,7 +20,6 @@
         "id": "plants_family",
         "name": "family",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -38,7 +36,6 @@
         "id": "plants_icon",
         "name": "icon",
         "type": "text",
-        "system": false,
         "required": true,
         "options": {
           "min": null,
@@ -50,7 +47,6 @@
         "id": "plants_sun",
         "name": "sunPreference",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -66,7 +62,6 @@
         "id": "plants_water",
         "name": "waterNeeds",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -81,11 +76,8 @@
         "id": "plants_days",
         "name": "daysToHarvest",
         "type": "number",
-        "system": false,
         "required": true,
         "options": {
-          "min": 0,
-          "max": null,
           "noDecimal": true
         }
       },
@@ -93,50 +85,34 @@
         "id": "plants_image",
         "name": "imageUrl",
         "type": "text",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": false
       },
       {
         "id": "plants_good_neighbors",
         "name": "goodNeighbors",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "moestuin_plants",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": null,
-          "displayFields": null
+          "maxSelect": null
         }
       },
       {
         "id": "plants_bad_neighbors",
         "name": "badNeighbors",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "moestuin_plants",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": null,
-          "displayFields": null
+          "maxSelect": null
         }
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_grid",
@@ -148,11 +124,8 @@
         "id": "grid_x",
         "name": "x",
         "type": "number",
-        "system": false,
         "required": true,
         "options": {
-          "min": 0,
-          "max": null,
           "noDecimal": true
         }
       },
@@ -160,11 +133,8 @@
         "id": "grid_y",
         "name": "y",
         "type": "number",
-        "system": false,
         "required": true,
         "options": {
-          "min": 0,
-          "max": null,
           "noDecimal": true
         }
       },
@@ -172,46 +142,32 @@
         "id": "grid_plant",
         "name": "plantId",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "moestuin_plants",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "grid_date",
         "name": "plantedDate",
         "type": "date",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": false
       },
       {
         "id": "grid_user",
         "name": "plantedBy",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "_pb_users_auth_",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "grid_type",
         "name": "plantType",
         "type": "select",
-        "system": false,
         "required": false,
         "options": {
           "maxSelect": 1,
@@ -226,7 +182,6 @@
         "id": "grid_sun",
         "name": "sunExposure",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -242,20 +197,14 @@
         "id": "grid_history",
         "name": "history",
         "type": "json",
-        "system": false,
-        "required": false,
-        "options": {
-          "maxSize": 2000000
-        }
+        "required": false
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_tasks",
@@ -267,103 +216,66 @@
         "id": "tasks_title",
         "name": "title",
         "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": true
       },
       {
         "id": "tasks_desc",
         "name": "description",
         "type": "text",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": false
       },
       {
         "id": "tasks_due",
         "name": "dueDate",
         "type": "date",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": false
       },
       {
         "id": "tasks_end",
         "name": "endDate",
         "type": "date",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": false
       },
       {
         "id": "tasks_comp",
         "name": "completed",
         "type": "bool",
-        "system": false,
-        "required": false,
-        "options": {}
+        "required": false
       },
       {
         "id": "tasks_user",
         "name": "assignedTo",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "_pb_users_auth_",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "tasks_orig",
         "name": "originalAssignedTo",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "_pb_users_auth_",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "tasks_cell",
         "name": "relatedCellId",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "moestuin_grid",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "tasks_type",
         "name": "type",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -380,19 +292,12 @@
         "id": "tasks_rec_int",
         "name": "recurring_interval",
         "type": "number",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "noDecimal": true
-        }
+        "required": false
       },
       {
         "id": "tasks_rec_unit",
         "name": "recurring_unit",
         "type": "select",
-        "system": false,
         "required": false,
         "options": {
           "maxSelect": 1,
@@ -404,13 +309,11 @@
         }
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_families",
@@ -422,22 +325,14 @@
         "id": "families_name",
         "name": "name",
         "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": true
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_seedbox",
@@ -449,33 +344,22 @@
         "id": "seed_plant",
         "name": "plantId",
         "type": "relation",
-        "system": false,
         "required": true,
         "options": {
           "collectionId": "moestuin_plants",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "seed_qty",
         "name": "quantity",
         "type": "number",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": 0,
-          "max": null,
-          "noDecimal": false
-        }
+        "required": true
       },
       {
         "id": "seed_unit",
         "name": "unit",
         "type": "select",
-        "system": false,
         "required": false,
         "options": {
           "maxSelect": 1,
@@ -486,13 +370,11 @@
         }
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_harvests",
@@ -504,97 +386,58 @@
         "id": "harv_plant",
         "name": "plantId",
         "type": "relation",
-        "system": false,
         "required": true,
         "options": {
           "collectionId": "moestuin_plants",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "harv_name",
         "name": "plantName",
         "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": true
       },
       {
         "id": "harv_date",
         "name": "date",
         "type": "date",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": true
       },
       {
         "id": "harv_user",
         "name": "userId",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "_pb_users_auth_",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "harv_qty",
         "name": "yieldQuantity",
         "type": "number",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": 0,
-          "max": null,
-          "noDecimal": false
-        }
+        "required": true
       },
       {
         "id": "harv_unit",
         "name": "yieldUnit",
         "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": true
       },
       {
         "id": "harv_notes",
         "name": "notes",
         "type": "text",
-        "system": false,
-        "required": false,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": false
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "moestuin_logs",
@@ -606,32 +449,22 @@
         "id": "log_cell",
         "name": "cellId",
         "type": "relation",
-        "system": false,
         "required": true,
         "options": {
           "collectionId": "moestuin_grid",
-          "cascadeDelete": true,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "log_date",
         "name": "date",
         "type": "date",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": "",
-          "max": ""
-        }
+        "required": true
       },
       {
         "id": "log_type",
         "name": "type",
         "type": "select",
-        "system": false,
         "required": true,
         "options": {
           "maxSelect": 1,
@@ -650,56 +483,30 @@
         "id": "log_note",
         "name": "note",
         "type": "text",
-        "system": false,
-        "required": true,
-        "options": {
-          "min": null,
-          "max": null,
-          "pattern": ""
-        }
+        "required": true
       },
       {
         "id": "log_user",
         "name": "userId",
         "type": "relation",
-        "system": false,
         "required": false,
         "options": {
           "collectionId": "_pb_users_auth_",
-          "cascadeDelete": false,
-          "minSelect": null,
-          "maxSelect": 1,
-          "displayFields": null
+          "maxSelect": 1
         }
       },
       {
         "id": "log_img",
         "name": "imageUrl",
         "type": "file",
-        "system": false,
-        "required": false,
-        "options": {
-          "mimeTypes": [
-            "image/jpeg",
-            "image/png",
-            "image/svg+xml",
-            "image/gif",
-            "image/webp"
-          ],
-          "thumbs": [],
-          "maxSelect": 1,
-          "maxSize": 5242880,
-          "protected": false
-        }
+        "required": false
       }
     ],
-    "indexes": [],
     "listRule": "@request.auth.id != ''",
     "viewRule": "@request.auth.id != ''",
     "createRule": "@request.auth.id != ''",
     "updateRule": "@request.auth.id != ''",
-    "deleteRule": "@request.auth.id != ''",
-    "options": {}
+    "deleteRule": "@request.auth.id != ''"
   },
   {
     "id": "_pb_users_auth_",
