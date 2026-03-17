@@ -176,9 +176,29 @@ export const useStore = create<AppState>()(
         pb.collection('logs').getFullList(),
       ]);
 
+      let fetchedGrid = grid as any[];
+      
+      // Auto-generate a 4x4 grid if completely empty
+      if (fetchedGrid.length === 0) {
+        console.log('Generating initial grid in PocketBase...');
+        const newCells = [];
+        for (let y = 0; y < 4; y++) {
+          for (let x = 0; x < 4; x++) {
+            const cell = {
+              x,
+              y,
+              sunExposure: y < 2 ? 'Zon' : 'Halfschaduw'
+            };
+            const record = await pb.collection('grid').create(cell);
+            newCells.push(record);
+          }
+        }
+        fetchedGrid = newCells;
+      }
+
       set({
         plants: plants as any,
-        grid: grid as any,
+        grid: fetchedGrid as any,
         tasks: tasks as any,
         families: families as any,
         users: users.map(u => ({ id: u.id, name: u.name || u.username, role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,

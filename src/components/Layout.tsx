@@ -13,7 +13,7 @@ export default function Layout() {
   const activeTasksCount = activeTasks.length;
 
   const unreadLogs = logs
-    .filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id)))
+    .filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const notificationsCount = activeTasksCount + unreadLogs.length;
@@ -180,9 +180,11 @@ export default function Layout() {
                           <div>
                             <p className="text-sm font-bold text-[#1A2E1A]">{task.title}</p>
                             <p className="text-xs text-stone-600 mt-1">{task.description}</p>
-                            <p className="text-[10px] font-bold text-red-600 mt-2 uppercase tracking-wider">
-                              Vervalt: {format(new Date(task.dueDate), 'd MMMM yyyy', { locale: nl })}
-                            </p>
+                            {task.dueDate && (
+                              <p className="text-[10px] font-bold text-red-600 mt-2 uppercase tracking-wider">
+                                Vervalt: {format(new Date(task.dueDate), 'd MMMM yyyy', { locale: nl })}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

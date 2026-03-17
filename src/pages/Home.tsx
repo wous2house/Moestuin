@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, GridCell, Plant } from '../store/useStore';
 import { useWeather } from '../lib/weather';
@@ -21,7 +21,14 @@ const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
 export default function Home() {
   const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen, dismissedLogs, families, logout } = useStore();
   const { weather, loading } = useWeather();
-  const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0]);
+  const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0] || null);
+  
+  useEffect(() => {
+    if (!selectedCell && grid.length > 0) {
+      setSelectedCell(grid[0]);
+    }
+  }, [grid, selectedCell]);
+
   const [isSelectingPlant, setIsSelectingPlant] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
@@ -594,7 +601,7 @@ export default function Home() {
             <p className="text-sm text-stone-500 mb-6">Komende 7 dagen</p>
 
             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
-              {weather?.forecast.map((day, idx) => (
+              {weather?.forecast?.map((day, idx) => (
                 <div key={idx} className="flex items-center justify-between bg-[#F5F7F4] p-3 rounded-2xl border border-stone-200 shadow-sm">
                   <div className="flex items-center space-x-3 w-1/3">
                     <span className="text-sm font-bold text-[#1A2E1A] capitalize">
