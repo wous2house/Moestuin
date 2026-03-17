@@ -1,30 +1,31 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { pb } from '../lib/pb';
 
 export default function Login() {
-  const { users, setCurrentUser } = useStore();
+  const { setCurrentUser } = useStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase());
-
-    if (!user) {
-      setError('Gebruiker niet gevonden');
-      return;
+    try {
+      // Authenticate with PocketBase users collection
+      const authData = await pb.collection('users').authWithPassword(username, password);
+      
+      // Update global store with the authenticated user
+      setCurrentUser(authData.record.id);
+    } catch (err: any) {
+      console.error(err);
+      setError('Inloggen mislukt. Controleer je gebruikersnaam en wachtwoord.');
+    } finally {
+      setIsLoading(false);
     }
-
-    if (user.password && user.password !== password) {
-      setError('Onjuist wachtwoord');
-      return;
-    }
-
-    // If user exists and either has no password or password matches
-    setCurrentUser(user.id);
   };
 
   return (
@@ -36,12 +37,12 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="w-full space-y-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Gebruikersnaam</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Gebruikersnaam of Email</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Je naam"
+              placeholder="Je naam of email"
               className="w-full bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
               autoFocus
             />
@@ -59,9 +60,10 @@ export default function Login() {
           </div>
           <button
             type="submit"
-            className="w-full py-4 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors mt-2"
+            disabled={isLoading || !username || !password}
+            className="w-full py-4 bg-[#5A8F5A] text-white rounded-xl font-bold hover:bg-[#4A7A4A] transition-colors mt-2 disabled:opacity-50"
           >
-            Inloggen
+            {isLoading ? 'Bezig met inloggen...' : 'Inloggen'}
           </button>
         </form>
       </div>

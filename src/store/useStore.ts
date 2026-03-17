@@ -132,7 +132,7 @@ interface AppState {
   updateFamily: (id: string, name: string) => void;
   deleteFamily: (id: string) => void;
   updateUserFamily: (userId: string, familyId: string) => void;
-  setCurrentUser: (userId: string) => void;
+  setCurrentUser: (userId: string) => Promise<void>;
   logout: () => void;
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
@@ -430,9 +430,27 @@ export const useStore = create<AppState>()(
     currentUser: state.currentUser?.id === userId ? { ...state.currentUser, familyId } : state.currentUser
   })),
 
-  setCurrentUser: (userId) => set((state) => ({
-    currentUser: state.users.find(u => u.id === userId) || null
-  })),
+  setCurrentUser: async (userId) => {
+    try {
+      const { pb } = await import('../lib/pb');
+      const user = await pb.collection('users').getOne(userId);
+      set((state) => ({
+        currentUser: {
+          id: user.id,
+          name: user.name || user.username,
+          role: user.role as 'Admin' | 'Lid',
+          familyId: user.familyId,
+          avatar: user.avatar ? pb.files.getUrl(user, user.avatar) : undefined
+        }
+      }));
+    } catch (e) {
+      console.error("Failed to fetch user", e);
+      // Fallback for mock users
+      set((state) => ({
+        currentUser: state.users.find(u => u.id === userId) || null
+      }));
+    }
+  },
 
   logout: () => set({ currentUser: null }),
 

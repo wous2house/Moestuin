@@ -35,6 +35,12 @@ export default defineConfig(({mode}) => {
               type: 'image/png'
             }
           ]
+        },
+        workbox: {
+          sourcemap: false,
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true
         }
       })
     ],
@@ -45,6 +51,9 @@ export default defineConfig(({mode}) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+    },
+    build: {
+      minify: false,
     },
     server: {
       port: 3004,

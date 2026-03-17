@@ -1,8 +1,5 @@
+node_modules/\ndist/\nbuild/\ncoverage/\n.DS_Store\n*.log\n.env*\n!.env.example\n*.proxy\npb_data/\npocketbase/
 node_modules/
-build/
 dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
+pb_data/
+pocketbase
