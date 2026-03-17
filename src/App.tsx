@@ -39,6 +39,7 @@ export default function App() {
           <Route path="profile" element={<Profile />} />
         </Route>
         <Route path="/add" element={<AddPlant />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

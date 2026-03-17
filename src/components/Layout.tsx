@@ -9,12 +9,12 @@ import { cn } from '../lib/utils';
 export default function Layout() {
   const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
 
-  const activeTasks = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id));
+  const activeTasks = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)) || [];
   const activeTasksCount = activeTasks.length;
 
   const unreadLogs = logs
-    .filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    ?.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))
+    ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   const notificationsCount = activeTasksCount + unreadLogs.length;
 

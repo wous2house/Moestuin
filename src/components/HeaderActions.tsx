@@ -8,8 +8,8 @@ export function HeaderActions() {
   const { currentUser, tasks, logs, dismissedLogs, families, setIsNotificationsModalOpen, logout } = useStore();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const activeTasksCount = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id))?.length || 0;
+  const unreadLogsCount = logs?.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))?.length || 0;
   const notificationsCount = activeTasksCount + unreadLogsCount;
 
   return (

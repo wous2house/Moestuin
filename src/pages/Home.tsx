@@ -302,7 +302,7 @@ export default function Home() {
               className="grid gap-3 md:gap-4 lg:gap-6 min-w-max md:min-w-0 bg-[#E6D5B8] p-4 md:p-6 rounded-[2.5rem] border-8 border-[#C19A6B]/20 shadow-inner" 
               style={{ gridTemplateColumns: `repeat(${gridWidth}, minmax(4.5rem, 1fr))` }}
             >
-              {grid.map(cell => {
+              {grid?.map(cell => {
                 const plant = getPlant(cell.plantId);
                 const isSelected = selectedCell?.id === cell.id;
                 
