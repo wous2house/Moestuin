@@ -4,6 +4,7 @@
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Tasks from './pages/Tasks';
@@ -15,7 +16,13 @@ import Login from './pages/Login';
 import { useStore } from './store/useStore';
 
 export default function App() {
-  const { currentUser } = useStore();
+  const { currentUser, initializeFromDB } = useStore();
+
+  useEffect(() => {
+    if (currentUser) {
+      initializeFromDB();
+    }
+  }, [currentUser, initializeFromDB]);
 
   if (!currentUser) {
     return <Login />;

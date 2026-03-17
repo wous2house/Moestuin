@@ -138,73 +138,22 @@ interface AppState {
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
   importData: (data: Partial<AppState>) => void;
+  initializeFromDB: () => Promise<void>;
 }
 
-// Mock Data
-const MOCK_PLANTS: Plant[] = [
-  { id: 'p1', name: 'Tomaat', family: 'Groente', goodNeighbors: ['p2', 'p4'], badNeighbors: ['p3'], sunPreference: 'Zon', daysToHarvest: 80, waterNeeds: 'Hoog', icon: '🍅', imageUrl: 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p2', name: 'Basilicum', family: 'Zaden', goodNeighbors: ['p1'], badNeighbors: [], sunPreference: 'Zon', daysToHarvest: 40, waterNeeds: 'Gemiddeld', icon: '🌿', imageUrl: 'https://images.unsplash.com/photo-1615486171448-4fc1eb8f15b4?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p3', name: 'Aardappel', family: 'Groente', goodNeighbors: [], badNeighbors: ['p1'], sunPreference: 'Zon', daysToHarvest: 100, waterNeeds: 'Gemiddeld', icon: '🥔', imageUrl: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p4', name: 'Wortel', family: 'Groente', goodNeighbors: ['p1', 'p5'], badNeighbors: [], sunPreference: 'Halfschaduw', daysToHarvest: 70, waterNeeds: 'Gemiddeld', icon: '🥕', imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p5', name: 'Ui', family: 'Groente', goodNeighbors: ['p4'], badNeighbors: ['p6'], sunPreference: 'Zon', daysToHarvest: 90, waterNeeds: 'Laag', icon: '🧅', imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&q=80&w=800' },
-  { id: 'p6', name: 'Boon', family: 'Groente', goodNeighbors: [], badNeighbors: ['p5'], sunPreference: 'Zon', daysToHarvest: 60, waterNeeds: 'Gemiddeld', icon: '🫘', imageUrl: 'https://images.unsplash.com/photo-1551228450-4228913c2393?auto=format&fit=crop&q=80&w=800' },
-];
-
-const MOCK_FAMILIES: FamilyGroup[] = [
-  { id: 'f1', name: 'Familie Jansen' },
-  { id: 'f2', name: 'Buurttuin De Molen' },
-];
-
-const MOCK_USERS: User[] = [
-  { id: 'u1', name: 'Papa', role: 'Admin', familyId: 'f1' },
-  { id: 'u2', name: 'Mama', role: 'Admin', familyId: 'f1' },
-  { id: 'u3', name: 'Kind', role: 'Lid', familyId: 'f1' },
-  { id: 'u4', name: 'Buurman Henk', role: 'Admin', familyId: 'f2' },
-  { id: 'u5', name: 'Buurvrouw Ingrid', role: 'Lid', familyId: 'f2' },
-];
-
-// Generate 4x4 grid
-const initialGrid: GridCell[] = [];
-for (let y = 0; y < 4; y++) {
-  for (let x = 0; x < 4; x++) {
-    let plantId = null;
-    if (y === 0 && x === 0) plantId = 'p1'; // Tomaat
-    if (y === 0 && x === 1) plantId = 'p2'; // Basilicum
-    if (y === 1 && x === 0) plantId = 'p4'; // Wortel
-    if (y === 2 && x === 2) plantId = 'p6'; // Boon
-
-    initialGrid.push({
-      id: `c-${x}-${y}`,
-      x,
-      y,
-      plantId,
-      plantedDate: plantId ? '2024-05-01' : null,
-      plantedBy: plantId ? 'u1' : null,
-      plantType: plantId ? 'Plant' : null,
-      sunExposure: y < 2 ? 'Zon' : 'Halfschaduw',
-      history: [],
-    });
-  }
-}
-
+// Initial empty state
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-  plants: MOCK_PLANTS,
-  grid: initialGrid,
+  plants: [],
+  grid: [],
   gridWidth: 4,
   gridHeight: 4,
-  tasks: [
-    { id: 't1', title: 'Tomaten water geven', description: 'Het is warm, extra water nodig.', dueDate: format(new Date(), 'yyyy-MM-dd'), completed: false, assignedTo: 'u1', relatedCellId: 'c-0-0', type: 'Water' },
-    { id: 't2', title: 'Wortels uitdunnen', description: 'Zorg voor 5cm ruimte tussen de wortels.', dueDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), completed: false, assignedTo: 'u2', relatedCellId: 'c-0-1', type: 'Overig' },
-  ],
-  users: MOCK_USERS,
-  families: MOCK_FAMILIES,
-  currentUser: MOCK_USERS[0],
-  seedBox: [
-    { plantId: 'p1', quantity: 50 },
-    { plantId: 'p4', quantity: 200 },
-  ],
+  tasks: [],
+  users: [],
+  families: [],
+  currentUser: null,
+  seedBox: [],
   harvests: [],
   logs: [],
   vacationMode: false,
@@ -212,6 +161,35 @@ export const useStore = create<AppState>()(
   pushNotifications: false,
   isNotificationsModalOpen: false,
   dismissedLogs: {},
+
+  initializeFromDB: async () => {
+    try {
+      const { pb } = await import('../lib/pb');
+      const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
+        pb.collection('plants').getFullList(),
+        pb.collection('grid').getFullList(),
+        pb.collection('tasks').getFullList(),
+        pb.collection('families').getFullList(),
+        pb.collection('users').getFullList(),
+        pb.collection('seedBox').getFullList(),
+        pb.collection('harvests').getFullList(),
+        pb.collection('logs').getFullList(),
+      ]);
+
+      set({
+        plants: plants as any,
+        grid: grid as any,
+        tasks: tasks as any,
+        families: families as any,
+        users: users.map(u => ({ id: u.id, name: u.name || u.username, role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
+        seedBox: seedBox as any,
+        harvests: harvests as any,
+        logs: logs as any,
+      });
+    } catch (e) {
+      console.error("Failed to initialize from DB", e);
+    }
+  },
 
   setGridCell: (cellId, updates) => set((state) => ({
     grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
