@@ -16,16 +16,16 @@ export async function generatePlantData(plantName: string): Promise<any> {
   "daysToHarvest": 60,
   "waterNeeds": "Een van: Laag, Gemiddeld, Hoog",
   "icon": "Eén emoji die specifiek dit gewas voorstelt (kies de meest unieke/passende emoji, vermijd algemene blaadjes tenzij onvermijdelijk)",
-  "wikipediaSearchTerm": "De exacte titel van het Nederlandse Wikipedia artikel voor deze plant (bijv. 'Tomaat', 'Kropsla', 'Aardbei')"
+  "englishSearchTerm": "De exacte Engelse vertaling/titel van het Engelse Wikipedia artikel voor deze plant (bijv. 'Tomato', 'Lettuce', 'Strawberry')"
 }`,
     });
     const text = response.text || "{}";
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const data = JSON.parse(jsonStr);
 
-    if (data.wikipediaSearchTerm) {
+    if (data.englishSearchTerm) {
       try {
-        const wikiRes = await fetch(`https://nl.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(data.wikipediaSearchTerm)}`);
+        const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(data.englishSearchTerm)}`);
         if (wikiRes.ok) {
           const wikiData = await wikiRes.json();
           if (wikiData.thumbnail && wikiData.thumbnail.source) {

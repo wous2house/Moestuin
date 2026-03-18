@@ -160,6 +160,8 @@ export default function Profile() {
     }
   };
 
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
   const handleUpdateOwnPassword = () => {
     if (currentUser && ownNewPassword) {
       updateUser(currentUser.id, { password: ownNewPassword });
@@ -168,10 +170,15 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteUser = (id: string) => {
-    if (confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?')) {
-      useStore.getState().deleteUser(id);
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      useStore.getState().deleteUser(userToDelete);
+      setUserToDelete(null);
     }
+  };
+
+  const handleDeleteUser = (id: string) => {
+    setUserToDelete(id);
   };
 
   return (
@@ -683,6 +690,34 @@ export default function Profile() {
           </div>
         </div>
       </div>
+      {/* Delete User Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col animate-in fade-in zoom-in-95 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Gebruiker Verwijderen</h2>
+            <p className="text-sm text-stone-500 mb-6">
+              Weet je zeker dat je deze gebruiker wilt verwijderen?
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => setUserToDelete(null)}
+                className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button 
+                onClick={confirmDeleteUser}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

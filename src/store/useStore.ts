@@ -84,8 +84,9 @@ export interface HarvestRecord {
 export interface GrowthLog {
   id: string;
   cellId: string;
+  plantId?: string | null;
   date: string;
-  type: 'Planten' | 'Wateren' | 'Notitie' | 'Oogst' | 'Ompoten' | 'Verwijderd' | 'Overig';
+  type: 'Planten' | 'Wateren' | 'Notitie' | 'Oogst' | 'Verwijderd' | 'Overig';
   note: string;
   userId: string | null;
   imageUrl?: string;
@@ -116,10 +117,13 @@ interface AppState {
   updateGridSize: (width: number, height: number) => Promise<{ success: boolean; message?: string }>;
   addTask: (task: Omit<Task, 'id'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   addPlant: (plant: Omit<Plant, 'id'>) => Promise<string>;
   updatePlant: (id: string, updates: Partial<Plant>) => Promise<void>;
   deletePlant: (id: string) => Promise<void>;
   addSeed: (seed: SeedInventory) => Promise<void>;
+  updateSeed: (id: string, updates: Partial<SeedInventory>) => Promise<void>;
+  deleteSeed: (id: string) => Promise<void>;
   toggleTask: (taskId: string) => Promise<void>;
   activateVacationMode: (delegateId: string, startDate: string, endDate: string) => void;
   deactivateVacationMode: () => void;
@@ -166,6 +170,13 @@ export const useStore = create<AppState>()(
   initializeFromDB: async () => {
     try {
       const { pb } = await import('../lib/pb');
+
+      if (!pb.authStore.isValid && get().currentUser) {
+        console.warn('PocketBase auth token is invalid or expired. Logging out.');
+        get().logout();
+        return;
+      }
+
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
         pb.collection('plants').getFullList().catch(e => { console.error('plants error', e); return []; }),
         pb.collection('grid').getFullList().catch(e => { console.error('grid error', e); return []; }),
@@ -177,7 +188,10 @@ export const useStore = create<AppState>()(
         pb.collection('logs').getFullList().catch(e => { console.error('logs error', e); return []; }),
       ]);
 
-      let fetchedGrid = grid as any[];
+      let fetchedGrid = (grid as any[]).sort((a, b) => {
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+      });
       
       // Auto-generate a 4x4 grid if completely empty
       if (fetchedGrid.length === 0 && pb.authStore.isValid) {
@@ -195,18 +209,51 @@ export const useStore = create<AppState>()(
               newCells.push(record);
             }
           }
-          fetchedGrid = newCells;
+          fetchedGrid = newCells.sort((a, b) => {
+            if (a.y !== b.y) return a.y - b.y;
+            return a.x - b.x;
+          });
         } catch (gridErr: any) {
           console.error('Failed to generate initial grid', gridErr?.response || gridErr);
+        }
+      }
+
+      const calculatedWidth = fetchedGrid.length > 0 ? Math.max(...fetchedGrid.map(c => c.x)) + 1 : 4;
+      const calculatedHeight = fetchedGrid.length > 0 ? Math.max(...fetchedGrid.map(c => c.y)) + 1 : 4;
+
+      // Auto-repair missing cells due to API glitches or deletions
+      if (fetchedGrid.length > 0 && fetchedGrid.length < calculatedWidth * calculatedHeight) {
+        console.log('Repairing missing grid cells in database...');
+        try {
+          const newCells = [];
+          for (let y = 0; y < calculatedHeight; y++) {
+            for (let x = 0; x < calculatedWidth; x++) {
+              if (!fetchedGrid.some((c: any) => c.x === x && c.y === y)) {
+                const cell = { x, y, sunExposure: 'Zon' };
+                newCells.push(pb.collection('grid').create(cell));
+              }
+            }
+          }
+          if (newCells.length > 0) {
+            const created = await Promise.all(newCells);
+            fetchedGrid = [...fetchedGrid, ...created].sort((a: any, b: any) => {
+              if (a.y !== b.y) return a.y - b.y;
+              return a.x - b.x;
+            });
+          }
+        } catch (repairErr: any) {
+          console.error('Failed to repair missing grid cells', repairErr);
         }
       }
 
       set({
         plants: plants as any,
         grid: fetchedGrid as any,
+        gridWidth: calculatedWidth,
+        gridHeight: calculatedHeight,
         tasks: tasks as any,
         families: families as any,
-        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
+        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined })) as any,
         seedBox: seedBox as any,
         harvests: harvests as any,
         logs: logs as any,
@@ -237,11 +284,11 @@ export const useStore = create<AppState>()(
     if (width < 1 || height < 1) return { success: false, message: 'Grid moet minimaal 1x1 zijn.' };
 
     if (width < state.gridWidth) {
-      const hasPlants = state.grid.some(c => c.x >= width && c.plantId !== null);
+      const hasPlants = state.grid.some(c => c.x >= width && !!c.plantId);
       if (hasPlants) return { success: false, message: 'Verwijder eerst de planten uit de kolommen die je wilt verwijderen.' };
     }
     if (height < state.gridHeight) {
-      const hasPlants = state.grid.some(c => c.y >= height && c.plantId !== null);
+      const hasPlants = state.grid.some(c => c.y >= height && !!c.plantId);
       if (hasPlants) return { success: false, message: 'Verwijder eerst de planten uit de rijen die je wilt verwijderen.' };
     }
 
@@ -306,6 +353,21 @@ export const useStore = create<AppState>()(
       console.error("Failed to update task in PB", e);
       set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+      }));
+    }
+  },
+
+  deleteTask: async (id) => {
+    try {
+      const { pb } = await import('../lib/pb');
+      await pb.collection('tasks').delete(id);
+      set((state) => ({
+        tasks: state.tasks.filter(t => t.id !== id)
+      }));
+    } catch (e) {
+      console.error("Failed to delete task from PB", e);
+      set((state) => ({
+        tasks: state.tasks.filter(t => t.id !== id)
       }));
     }
   },
@@ -401,6 +463,36 @@ export const useStore = create<AppState>()(
         }
         return { seedBox: [...state.seedBox, seed] };
       });
+    }
+  },
+
+  updateSeed: async (id, updates) => {
+    try {
+      const { pb } = await import('../lib/pb');
+      await pb.collection('seedBox').update(id, updates);
+      set((state) => ({
+        seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
+      }));
+    } catch (e) {
+      console.error("Failed to update seed in PB", e);
+      set((state) => ({
+        seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
+      }));
+    }
+  },
+
+  deleteSeed: async (id) => {
+    try {
+      const { pb } = await import('../lib/pb');
+      await pb.collection('seedBox').delete(id);
+      set((state) => ({
+        seedBox: state.seedBox.filter(s => s.id !== id)
+      }));
+    } catch (e) {
+      console.error("Failed to delete seed from PB", e);
+      set((state) => ({
+        seedBox: state.seedBox.filter(s => s.id !== id)
+      }));
     }
   },
 
@@ -695,7 +787,7 @@ export const useStore = create<AppState>()(
           name: user.name || user.username || user.email || 'Gebruiker',
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
-          avatar: user.avatar ? pb.files.getUrl(user, user.avatar) : undefined
+          avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined
         }
       }));
     } catch (e) {

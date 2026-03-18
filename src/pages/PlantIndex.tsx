@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useStore, Plant, PlantFamily, SunPreference } from '../store/useStore';
-import { Search, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2, Bell } from 'lucide-react';
+import { Search, Droplets, Sun, Calendar, Plus, Loader2, Check, Pencil, Trash2, Bell, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { generatePlantData } from '../lib/gemini';
 
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function PlantIndex() {
-  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
+  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, updateSeed, deleteSeed, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'index' | 'zaden'>('index');
   
@@ -24,6 +24,13 @@ export default function PlantIndex() {
   const [addToSeedBox, setAddToSeedBox] = useState(false);
   const [seedQuantity, setSeedQuantity] = useState<number | ''>('');
   const [seedUnit, setSeedUnit] = useState<'stuks' | 'gram'>('stuks');
+
+  const [editingSeedId, setEditingSeedId] = useState<string | null>(null);
+  const [editSeedQuantity, setEditSeedQuantity] = useState<number | ''>('');
+  const [editSeedUnit, setEditSeedUnit] = useState<'stuks' | 'gram'>('stuks');
+
+  const [plantToDelete, setPlantToDelete] = useState<string | null>(null);
+  const [seedToDelete, setSeedToDelete] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!newPlantInput.trim()) return;
@@ -48,6 +55,14 @@ export default function PlantIndex() {
           icon: generatedPlantData.icon || '🌱',
           imageUrl: generatedPlantData.imageUrl,
         });
+
+        if (addToSeedBox && typeof seedQuantity === 'number' && seedQuantity > 0) {
+          addSeed({
+            plantId: editingPlantId,
+            quantity: seedQuantity,
+            unit: seedUnit
+          });
+        }
       } else {
         const newPlantId = await addPlant({
           name: generatedPlantData.name,
@@ -90,10 +105,22 @@ export default function PlantIndex() {
     setIsAddingModalOpen(true);
   };
 
-  const handleDeletePlant = (id: string) => {
-    if (confirm('Weet je zeker dat je dit gewas wilt verwijderen? Dit zal het gewas overal in de app verwijderen, inclusief het grid en de zadenbox.')) {
-      deletePlant(id);
+  const confirmDeletePlant = () => {
+    if (plantToDelete) {
+      deletePlant(plantToDelete);
+      setPlantToDelete(null);
     }
+  };
+
+  const confirmDeleteSeed = () => {
+    if (seedToDelete) {
+      deleteSeed(seedToDelete);
+      setSeedToDelete(null);
+    }
+  };
+
+  const handleDeletePlant = (id: string) => {
+    setPlantToDelete(id);
   };
 
   const filteredPlants = plants.filter(p => 
@@ -303,6 +330,64 @@ export default function PlantIndex() {
         </div>
       )}
 
+      {/* Delete Plant Modal */}
+      {plantToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col animate-in fade-in zoom-in-95 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Gewas Verwijderen</h2>
+            <p className="text-sm text-stone-500 mb-6">
+              Weet je zeker dat je dit gewas wilt verwijderen? Dit zal het gewas overal in de app verwijderen, inclusief het grid en de zadenbox.
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => setPlantToDelete(null)}
+                className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button 
+                onClick={confirmDeletePlant}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Seed Modal */}
+      {seedToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col animate-in fade-in zoom-in-95 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Zaden Verwijderen</h2>
+            <p className="text-sm text-stone-500 mb-6">
+              Weet je zeker dat je deze zaden uit de zadenbox wilt verwijderen?
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => setSeedToDelete(null)}
+                className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button 
+                onClick={confirmDeleteSeed}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-6 space-y-4 md:space-y-0">
         {/* Tabs */}
@@ -407,20 +492,86 @@ export default function PlantIndex() {
             {seedBox.map(seed => {
               const plant = plants.find(p => p.id === seed.plantId);
               if (!plant) return null;
+              const isEditing = editingSeedId === seed.id;
+
               return (
-                <div key={seed.plantId} className="bg-white border border-stone-100 rounded-2xl p-4 flex justify-between items-center shadow-sm">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center">
-                      <span className="text-lg">{plant.icon}</span>
+                <div key={seed.plantId} className="bg-white border border-stone-100 rounded-2xl p-4 flex flex-col shadow-sm">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center">
+                        <span className="text-lg">{plant.icon}</span>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-[#1A2E1A]">{plant.name}</h3>
+                        <p className="text-xs text-stone-500">{plant.family}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[#1A2E1A]">{plant.name}</h3>
-                      <p className="text-xs text-stone-500">{plant.family}</p>
+                    {currentUser?.role === 'Admin' && !isEditing && (
+                      <div className="flex items-center space-x-1">
+                        <button 
+                          onClick={() => {
+                            setEditingSeedId(seed.id);
+                            setEditSeedQuantity(seed.quantity);
+                            setEditSeedUnit(seed.unit as 'stuks' | 'gram');
+                          }}
+                          className="p-1.5 text-stone-400 hover:text-[#5A8F5A] hover:bg-[#E8F0E8] rounded-lg transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setSeedToDelete(seed.id);
+                          }}
+                          className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {isEditing ? (
+                    <div className="flex items-center space-x-2 mt-2 pt-3 border-t border-stone-100">
+                      <input 
+                        type="number" 
+                        min="1"
+                        value={editSeedQuantity}
+                        onChange={(e) => setEditSeedQuantity(parseInt(e.target.value) || '')}
+                        className="w-16 bg-[#F5F7F4] border-none rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-[#5A8F5A] font-bold"
+                      />
+                      <select 
+                        value={editSeedUnit}
+                        onChange={(e) => setEditSeedUnit(e.target.value as 'stuks' | 'gram')}
+                        className="bg-[#F5F7F4] border-none rounded-lg py-2 px-3 text-sm focus:ring-2 focus:ring-[#5A8F5A] font-bold w-24"
+                      >
+                        <option value="stuks">Stuks</option>
+                        <option value="gram">Gram</option>
+                      </select>
+                      <button 
+                        onClick={() => {
+                           if (typeof editSeedQuantity === 'number' && editSeedQuantity > 0) {
+                             updateSeed(seed.id, { quantity: editSeedQuantity, unit: editSeedUnit });
+                             setEditingSeedId(null);
+                           }
+                        }}
+                        className="p-2 bg-[#5A8F5A] text-white rounded-lg hover:bg-[#4A7A4A] transition-colors"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => setEditingSeedId(null)}
+                        className="p-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-stone-200 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  </div>
-                  <div className="bg-[#F5F7F4] px-3 py-1.5 rounded-lg">
-                    <span className="text-sm font-bold text-stone-700">{seed.quantity} {seed.unit === 'gram' ? 'g' : 'st.'}</span>
-                  </div>
+                  ) : (
+                    <div className="flex justify-end items-center mt-2 pt-3 border-t border-stone-100">
+                      <div className="bg-[#F5F7F4] px-3 py-1.5 rounded-lg">
+                        <span className="text-sm font-bold text-stone-700">{seed.quantity} {seed.unit === 'gram' ? 'g' : 'st.'}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

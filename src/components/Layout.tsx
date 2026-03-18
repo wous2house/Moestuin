@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { TreeDeciduous, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
@@ -121,21 +121,6 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          <button
-            onClick={() => setIsNotificationsModalOpen(true)}
-            className="flex flex-col items-center justify-center space-y-1 w-16 transition-colors text-stone-400 hover:text-[#5A8F5A] relative"
-          >
-            <div className="relative">
-              <Bell className="w-6 h-6" />
-              {notificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
-                  {notificationsCount}
-                </span>
-              )}
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-wider truncate w-full text-center">Meldingen</span>
-          </button>
-
           {navItemsRight.map((item) => (
             <NavLink
               key={item.to}
@@ -182,7 +167,7 @@ export default function Layout() {
                             <p className="text-xs text-stone-600 mt-1">{task.description}</p>
                             {task.dueDate && (
                               <p className="text-[10px] font-bold text-red-600 mt-2 uppercase tracking-wider">
-                                Vervalt: {format(new Date(task.dueDate), 'd MMMM yyyy', { locale: nl })}
+                                Vervalt: {isValid(new Date(task.dueDate)) ? format(new Date(task.dueDate), 'd MMMM yyyy', { locale: nl }) : 'Onbekend'}
                               </p>
                             )}
                           </div>
@@ -217,7 +202,7 @@ export default function Layout() {
                           )}
                           <div className="flex-1">
                             <p className="text-xs font-bold text-[#1A2E1A]">{logUser?.name} heeft actie '{log.type}' uitgevoerd</p>
-                            <p className="text-[10px] text-stone-500">In vak {cellName} • {format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</p>
+                            <p className="text-[10px] text-stone-500">In vak {cellName} • {isValid(new Date(log.date)) ? format(new Date(log.date), 'd MMM HH:mm', { locale: nl }) : 'Onbekend'}</p>
                           </div>
                           <button 
                             onClick={(e) => {

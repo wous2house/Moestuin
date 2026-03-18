@@ -456,6 +456,16 @@
         }
       },
       {
+        "id": "log_plant",
+        "name": "plantId",
+        "type": "relation",
+        "required": false,
+        "options": {
+          "collectionId": "moestuin_plants",
+          "maxSelect": 1
+        }
+      },
+      {
         "id": "log_date",
         "name": "date",
         "type": "date",
@@ -473,7 +483,6 @@
             "Wateren",
             "Notitie",
             "Oogst",
-            "Ompoten",
             "Verwijderd",
             "Overig"
           ]

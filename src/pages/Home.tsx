@@ -47,6 +47,8 @@ export default function Home() {
   const [harvestUnit, setHarvestUnit] = useState('stuks');
   
   const [isWateredModalOpen, setIsWateredModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isMobileDetailModalOpen, setIsMobileDetailModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
@@ -55,17 +57,26 @@ export default function Home() {
 
   const selectedPlant = getPlant(selectedCell?.plantId || null);
   
-  const plantLogs = logs.filter(l => l.cellId === selectedCell?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const lastWateredLog = plantLogs.find(l => l.type === 'Wateren');
+  const cellLogs = logs.filter(l => l.cellId === selectedCell?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  
+  const currentPlantLogs = cellLogs.filter(l => {
+    if (l.plantId) {
+       return l.plantId === selectedCell?.plantId;
+    }
+    if (!selectedCell?.plantedDate) return false;
+    return new Date(l.date) >= new Date(selectedCell.plantedDate);
+  });
+
+  const lastWateredLog = currentPlantLogs.find(l => l.type === 'Wateren');
   
   let needsWater = false;
   if (selectedPlant) {
-    const waterDays = selectedPlant.waterNeeds === 'Hoog' ? 1 : selectedPlant.waterNeeds === 'Gemiddeld' ? 3 : 7;
     if (!lastWateredLog) {
       needsWater = true;
     } else {
       const daysSinceWater = differenceInDays(new Date(), new Date(lastWateredLog.date));
-      needsWater = daysSinceWater >= waterDays;
+      // Reset button to "Wateren" if at least 1 day has passed, or if the plant needs it sooner (though 1 is the minimum)
+      needsWater = daysSinceWater >= 1;
     }
   }
 
@@ -73,6 +84,7 @@ export default function Home() {
     if (selectedCell && needsWater) {
       addLog({
         cellId: selectedCell.id,
+        plantId: selectedCell.plantId,
         date: new Date().toISOString(),
         type: 'Wateren',
         note: 'Water gegeven',
@@ -85,6 +97,7 @@ export default function Home() {
     if (selectedCell && noteText.trim()) {
       addLog({
         cellId: selectedCell.id,
+        plantId: selectedCell.plantId,
         date: new Date().toISOString(),
         type: 'Notitie',
         note: noteText.trim(),
@@ -102,6 +115,7 @@ export default function Home() {
       reader.onloadend = () => {
         addLog({
           cellId: selectedCell.id,
+          plantId: selectedCell.plantId,
           date: new Date().toISOString(),
           type: 'Notitie',
           note: 'Foto toegevoegd',
@@ -115,21 +129,23 @@ export default function Home() {
 
   const handleAssignPlant = (plantId: string) => {
     if (selectedCell) {
-      setGridCell(selectedCell.id, {
+      const updates = {
         plantId,
-        plantedDate: format(new Date(), 'yyyy-MM-dd'),
+        plantedDate: new Date().toISOString(),
         plantedBy: currentUser?.id || null,
-        plantType: 'Zaad',
-      });
+        plantType: 'Zaad' as const,
+      };
+      setGridCell(selectedCell.id, updates);
       addLog({
         cellId: selectedCell.id,
+        plantId,
         date: new Date().toISOString(),
         type: 'Planten',
         note: `Geplant als Zaad`,
         userId: currentUser?.id || null
       });
       setIsSelectingPlant(false);
-      setSelectedCell(grid.find(c => c.id === selectedCell.id) || null);
+      setSelectedCell({ ...selectedCell, ...updates });
     }
   };
 
@@ -137,34 +153,21 @@ export default function Home() {
     if (selectedCell) {
       addLog({
         cellId: selectedCell.id,
+        plantId: selectedCell.plantId,
         date: new Date().toISOString(),
         type: 'Verwijderd',
         note: 'Gewas verwijderd',
         userId: currentUser?.id || null
       });
-      setGridCell(selectedCell.id, {
+      const updates = {
         plantId: null,
         plantedDate: null,
         plantedBy: null,
         plantType: null,
-      });
-      setSelectedCell(grid.find(c => c.id === selectedCell.id) || null);
-    }
-  };
-
-  const handlePotPlant = () => {
-    if (selectedCell) {
-      setGridCell(selectedCell.id, {
-        plantType: 'Plant'
-      });
-      addLog({
-        cellId: selectedCell.id,
-        date: new Date().toISOString(),
-        type: 'Ompoten',
-        note: 'Omgepoot naar vaste plant',
-        userId: currentUser?.id || null
-      });
-      setSelectedCell(grid.find(c => c.id === selectedCell.id) || null);
+      };
+      setGridCell(selectedCell.id, updates);
+      setSelectedCell({ ...selectedCell, ...updates });
+      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -189,20 +192,22 @@ export default function Home() {
       });
       addLog({
         cellId: selectedCell.id,
+        plantId: selectedPlant.id,
         date: new Date().toISOString(),
         type: 'Oogst',
         note: `Geoogst: ${harvestQuantity} ${harvestUnit}`,
         userId: currentUser?.id || null
       });
-      setGridCell(selectedCell.id, {
+      const updates = {
         plantId: null,
         plantedDate: null,
         plantedBy: null,
         plantType: null,
-      });
+      };
+      setGridCell(selectedCell.id, updates);
       setIsHarvestModalOpen(false);
       setHarvestQuantity('');
-      setSelectedCell(grid.find(c => c.id === selectedCell.id) || null);
+      setSelectedCell({ ...selectedCell, ...updates });
     }
   };
 
@@ -215,7 +220,7 @@ export default function Home() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-6xl mx-auto flex flex-col h-full space-y-6">
+    <div className="p-6 max-w-md md:max-w-6xl mx-auto flex flex-col h-full space-y-6 !pb-0">
       {/* Header */}
       <header className="flex justify-between items-center shrink-0">
         <div>
@@ -317,6 +322,7 @@ export default function Home() {
                     key={cell.id}
                     onClick={() => {
                       setSelectedCell(cell);
+                      setIsMobileDetailModalOpen(true);
                       if (!cell.plantId) setIsSelectingPlant(true);
                     }}
                     className={cn(
@@ -352,12 +358,34 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Detail Card */}
+        {/* Detail Card (Modal on mobile, Sidebar on desktop) */}
         {selectedCell && (
-          <section className="bg-white rounded-[2rem] p-6 shadow-sm border border-stone-100 relative md:col-span-5 lg:col-span-4 md:sticky md:top-6">
-            <div className="w-12 h-1.5 bg-stone-200 rounded-full mx-auto mb-6 absolute top-3 left-1/2 -translate-x-1/2 md:hidden" />
+          <>
+            {/* Mobile Backdrop */}
+            {isMobileDetailModalOpen && (
+              <div 
+                className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm md:hidden" 
+                onClick={() => setIsMobileDetailModalOpen(false)}
+              />
+            )}
             
-            {selectedPlant ? (
+            <section className={cn(
+              "bg-white p-6 border border-stone-100 relative transition-all",
+              isMobileDetailModalOpen 
+                ? "fixed bottom-0 left-0 right-0 z-[100] max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-full rounded-t-[2rem] rounded-b-none shadow-2xl md:static md:max-h-none md:overflow-visible md:animate-none md:rounded-[2rem]" 
+                : "hidden md:block",
+              "md:col-span-5 lg:col-span-4 md:sticky md:top-6 mb-3 md:shadow-sm md:rounded-[2rem]"
+            )}>
+              <button 
+                onClick={() => setIsMobileDetailModalOpen(false)}
+                className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors md:hidden z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="w-12 h-1.5 bg-stone-200 rounded-full mx-auto mb-6 md:hidden" />
+              
+              {selectedPlant ? (
               <>
               {selectedPlant.imageUrl && (
                 <div className="w-full h-40 rounded-2xl overflow-hidden mb-4 relative">
@@ -386,7 +414,7 @@ export default function Home() {
                   <p className="text-sm italic text-[#5A8F5A]">{selectedPlant.family}</p>
                 </div>
                 <button 
-                  onClick={handleRemovePlant}
+                  onClick={() => setIsDeleteConfirmOpen(true)}
                   className="p-2 bg-red-50 rounded-full text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
                 >
                   <Trash2 className="w-5 h-5" />
@@ -460,34 +488,19 @@ export default function Home() {
                     </>
                   )}
                 </button>
-                {selectedCell.plantType === 'Zaad' && (
-                  <button 
-                    onClick={handlePotPlant}
-                    className="bg-amber-500 text-white rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-amber-600 transition-colors"
-                  >
-                    <Leaf className="w-4 h-4" />
-                    <span>Ompoten</span>
-                  </button>
-                )}
                 <button 
                   onClick={() => setIsNoteModalOpen(true)}
-                  className={cn(
-                    "bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors",
-                    selectedCell.plantType !== 'Zaad' && "col-span-1"
-                  )}
+                  className="bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors col-span-1"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Notitie</span>
                 </button>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className={cn(
-                    "bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors",
-                    selectedCell.plantType === 'Zaad' && "col-span-2"
-                  )}
+                  className="bg-[#F5F7F4] text-[#1A2E1A] rounded-xl py-3 font-bold flex items-center justify-center space-x-2 hover:bg-[#E8F0E8] transition-colors col-span-2"
                 >
                   <Camera className="w-4 h-4" />
-                  <span>Foto</span>
+                  <span>Foto toevoegen</span>
                 </button>
                 <input 
                   type="file" 
@@ -536,40 +549,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
-                {plantLogs.length > 0 && (
-                  <div className="bg-[#F5F7F4] rounded-2xl p-4">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-3">Geschiedenis</p>
-                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2 no-scrollbar">
-                      {plantLogs.map(log => {
-                        const user = getUser(log.userId);
-                        return (
-                          <div key={log.id} className="flex items-start space-x-3 bg-white p-3 rounded-xl border border-stone-100 shadow-sm">
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <p className="text-xs font-bold text-[#1A2E1A]">{log.type}</p>
-                                <span className="text-[10px] text-stone-400">{format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</span>
-                              </div>
-                              <p className="text-[10px] text-stone-500 mt-1">{log.note}</p>
-                              {log.imageUrl && (
-                                <img 
-                                  src={log.imageUrl} 
-                                  alt="Log" 
-                                  onClick={() => setSelectedPhotoUrl(log.imageUrl as string)}
-                                  className="mt-2 w-full h-32 object-cover rounded-lg border border-stone-200 cursor-pointer hover:opacity-90 transition-opacity" 
-                                />
-                              )}
-                              {user && <p className="text-[9px] font-bold text-[#5A8F5A] mt-1">Door: {user.name}</p>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
             </>
-          ) : (
+            ) : (
             <div className="py-4">
               <div className="text-center py-4">
                 <p className="text-stone-500 mb-6 font-medium">Dit vak is nog leeg.</p>
@@ -583,7 +565,43 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {cellLogs.length > 0 && (
+            <div className="bg-[#F5F7F4] rounded-2xl p-4 mt-6">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-3">Geschiedenis</p>
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-2 no-scrollbar">
+                {cellLogs.map(log => {
+                  const user = getUser(log.userId);
+                  const logPlant = log.plantId ? getPlant(log.plantId) : null;
+                  return (
+                    <div key={log.id} className="flex items-start space-x-3 bg-white p-3 rounded-xl border border-stone-100 shadow-sm">
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-xs font-bold text-[#1A2E1A] flex items-center flex-wrap">
+                            <span>{log.type}</span>
+                            {logPlant && <span className="ml-2 font-normal text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center"><span className="mr-1">{logPlant.icon}</span>{logPlant.name}</span>}
+                          </p>
+                          <span className="text-[10px] text-stone-400 shrink-0 ml-2">{format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</span>
+                        </div>
+                        <p className="text-[10px] text-stone-500 mt-1">{log.note}</p>
+                        {log.imageUrl && (
+                          <img 
+                            src={log.imageUrl} 
+                            alt="Log" 
+                            onClick={() => setSelectedPhotoUrl(log.imageUrl as string)}
+                            className="mt-2 w-full h-32 object-cover rounded-lg border border-stone-200 cursor-pointer hover:opacity-90 transition-opacity" 
+                          />
+                        )}
+                        {user && <p className="text-[9px] font-bold text-[#5A8F5A] mt-1">Door: {user.name}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
+        </>
       )}
       </div>
 
@@ -781,6 +799,35 @@ export default function Home() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Grid Plant Confirmation Modal */}
+      {isDeleteConfirmOpen && selectedPlant && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm shadow-xl flex flex-col animate-in fade-in zoom-in-95 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Gewas Verwijderen</h2>
+            <p className="text-sm text-stone-500 mb-6">
+              Weet je zeker dat je de <span className="font-bold text-[#1A2E1A]">{selectedPlant.icon} {selectedPlant.name}</span> uit dit vak wilt verwijderen?
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button 
+                onClick={handleRemovePlant}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors"
+              >
+                Verwijderen
+              </button>
             </div>
           </div>
         </div>
