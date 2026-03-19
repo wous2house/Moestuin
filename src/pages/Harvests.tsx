@@ -96,7 +96,7 @@ export default function Harvests() {
   const isOverDistributed = remainingQuantity < 0;
 
   return (
-    <div className="p-6 max-w-md md:max-w-6xl mx-auto space-y-8">
+    <div className="p-6 mw-2000 mx-auto space-y-8">
       <header className="mb-8 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-[#1A2E1A] flex items-center space-x-3">

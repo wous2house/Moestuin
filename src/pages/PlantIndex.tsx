@@ -129,7 +129,7 @@ export default function PlantIndex() {
   );
 
   return (
-    <div className="p-6 max-w-md md:max-w-4xl lg:max-w-6xl mx-auto h-full flex flex-col space-y-6">
+    <div className="p-6 mw-2000 mx-auto h-full flex flex-col space-y-6">
       <header className="flex justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-[#1A2E1A]">Gewassen</h1>
@@ -520,7 +520,7 @@ export default function PlantIndex() {
                         </button>
                         <button 
                           onClick={() => {
-                            setSeedToDelete(seed.id);
+                            setSeedToDelete(seed.id || seed.plantId);
                           }}
                           className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >

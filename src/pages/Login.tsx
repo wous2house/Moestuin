@@ -37,12 +37,12 @@ export default function Login() {
 
         <form onSubmit={handleLogin} className="w-full space-y-4">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Gebruikersnaam of Email</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1 ml-1">Gebruikersnaam</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Je naam of email"
+              placeholder="Je naam"
               className="w-full bg-[#F5F7F4] border-none rounded-xl p-4 text-sm font-bold text-[#1A2E1A] focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none"
               autoFocus
             />

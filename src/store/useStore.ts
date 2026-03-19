@@ -481,17 +481,28 @@ export const useStore = create<AppState>()(
     }
   },
 
-  deleteSeed: async (id) => {
+  deleteSeed: async (idOrPlantId) => {
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('seedBox').delete(id);
+      const state = get();
+      const seed = state.seedBox.find(s => s.id === idOrPlantId || s.plantId === idOrPlantId);
+
+      if (seed && seed.id) {
+        await pb.collection('seedBox').delete(seed.id);
+      } else {
+        const records = await pb.collection('seedBox').getFullList({ filter: `plantId="${idOrPlantId}"` });
+        for (const record of records) {
+          await pb.collection('seedBox').delete(record.id);
+        }
+      }
+
       set((state) => ({
-        seedBox: state.seedBox.filter(s => s.id !== id)
+        seedBox: state.seedBox.filter(s => s.id !== idOrPlantId && s.plantId !== idOrPlantId)
       }));
     } catch (e) {
       console.error("Failed to delete seed from PB", e);
       set((state) => ({
-        seedBox: state.seedBox.filter(s => s.id !== id)
+        seedBox: state.seedBox.filter(s => s.id !== idOrPlantId && s.plantId !== idOrPlantId)
       }));
     }
   },

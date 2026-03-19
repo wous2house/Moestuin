@@ -220,7 +220,7 @@ export default function Home() {
   };
 
   return (
-    <div className="p-6 max-w-md md:max-w-6xl mx-auto flex flex-col h-full space-y-6 !pb-0">
+    <div className="p-6 mw-2000 mx-auto flex flex-col h-full space-y-6 !pb-0">
       {/* Header */}
       <header className="flex justify-between items-center shrink-0">
         <div>
@@ -302,7 +302,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="w-full overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
+          <div id="tuingrid" className="w-full overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
             <div 
               className="grid gap-3 md:gap-4 lg:gap-6 min-w-max md:min-w-0 bg-[#E6D5B8] p-4 md:p-6 rounded-[2.5rem] border-8 border-[#C19A6B]/20 shadow-inner" 
               style={{ gridTemplateColumns: `repeat(${gridWidth}, minmax(4.5rem, 1fr))` }}
@@ -374,7 +374,7 @@ export default function Home() {
               isMobileDetailModalOpen 
                 ? "fixed bottom-0 left-0 right-0 z-[100] max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom-full rounded-t-[2rem] rounded-b-none shadow-2xl md:static md:max-h-none md:overflow-visible md:animate-none md:rounded-[2rem]" 
                 : "hidden md:block",
-              "md:col-span-5 lg:col-span-4 md:sticky md:top-6 mb-3 md:shadow-sm md:rounded-[2rem]"
+              "md:col-span-5 lg:col-span-4 md:sticky md:top-6 mb-3 md:shadow-sm md:rounded-[2rem] mb-6 mt-50px"
             )}>
               <button 
                 onClick={() => setIsMobileDetailModalOpen(false)}

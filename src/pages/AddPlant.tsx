@@ -121,7 +121,7 @@ export default function AddPlant() {
           <div className="space-y-8 mt-8 md:mt-0">
             {/* Location Selection */}
             <section>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 mb-3">3. Waar in de tuin? (Optioneel)</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 mb-3">3. Waar in de tuin?</h2>
               {availableCells.length === 0 ? (
                 <p className="text-sm text-amber-600 bg-amber-50 p-4 rounded-xl">De tuin is momenteel vol. Verwijder eerst een plant om ruimte te maken.</p>
               ) : (

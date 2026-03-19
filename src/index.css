@@ -23,4 +23,16 @@
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  .mw-2000 {
+    max-width: 2000px;
+  }
+  .mt-50px {
+    margin-top: 50px;
+  }
+  @media (max-width: 767px) {
+    #tuingrid {
+      width: calc(100% + 1.25rem)!important;
+    }
+  }
 }
