@@ -1,45 +1,104 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useStore, PlantType } from '../store/useStore';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useStore, PlantType, SunPreference } from '../store/useStore';
 import { format } from 'date-fns';
-import { ArrowLeft, Check, Sun, Bell } from 'lucide-react';
+import { ArrowLeft, Check, Sun, Search, Info, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { calculateHarvestDate } from '../lib/gemini';
 
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function AddPlant() {
   const navigate = useNavigate();
-  const { plants, grid, setGridCell, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
+  const [searchParams] = useSearchParams();
+  const initialCell = searchParams.get('cell');
+
+  const { plants, grid, setGridCell, currentUser, addLog } = useStore();
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
-  const notificationsCount = activeTasksCount + unreadLogsCount;
-  
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<PlantType>('Zaad');
-  const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
+  const [selectedCellId, setSelectedCellId] = useState<string | null>(initialCell || null);
+  const [sunExposure, setSunExposure] = useState<SunPreference>('Zon');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // If initialCell is provided but invalid (e.g. already occupied), deselect it
+  useEffect(() => {
+    if (initialCell) {
+      const cell = grid.find(c => c.id === initialCell);
+      if (!cell || cell.plantId) {
+        setSelectedCellId(null);
+      } else if (cell.sunExposure) {
+        setSunExposure(cell.sunExposure);
+      }
+    }
+  }, [initialCell, grid]);
+
+  // Update sunExposure when selecting a cell
+  useEffect(() => {
+    if (selectedCellId) {
+      const cell = grid.find(c => c.id === selectedCellId);
+      if (cell && cell.sunExposure) {
+        setSunExposure(cell.sunExposure);
+      }
+    }
+  }, [selectedCellId, grid]);
 
   const getPlant = (id: string | null) => plants.find(p => p.id === id);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (selectedPlantId && selectedCellId) {
-      setGridCell(selectedCellId, {
+      setIsSaving(true);
+      const plant = getPlant(selectedPlantId);
+      const plantedDate = format(new Date(), 'yyyy-MM-dd');
+      
+      let customDaysToHarvest = null;
+      if (plant) {
+        const aiResult = await calculateHarvestDate(plant.name, selectedType, sunExposure, plantedDate);
+        if (aiResult && aiResult.expectedHarvestDays) {
+          customDaysToHarvest = aiResult.expectedHarvestDays;
+        }
+      }
+
+      await setGridCell(selectedCellId, {
         plantId: selectedPlantId,
         plantType: selectedType,
-        plantedDate: format(new Date(), 'yyyy-MM-dd'),
+        plantedDate: plantedDate,
         plantedBy: currentUser?.id || null,
+        sunExposure: sunExposure,
+        customDaysToHarvest: customDaysToHarvest
       });
+
+      addLog({
+        cellId: selectedCellId,
+        plantId: selectedPlantId,
+        date: new Date().toISOString(),
+        type: 'Planten',
+        note: `Geplant als ${selectedType} in ${sunExposure}`,
+        userId: currentUser?.id || null
+      });
+
+      setIsSaving(false);
       navigate('/');
     }
   };
 
-  const availableCells = grid.filter(c => !c.plantId);
+  const availableCells = grid.filter(c => !c.plantId || c.id === selectedCellId);
+
+  const filteredPlants = plants.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.family.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const displayedPlants = searchTerm.trim() === '' 
+    ? [...plants].reverse().slice(0, 5) 
+    : filteredPlants;
 
   return (
     <div className="p-6 max-w-md md:max-w-4xl lg:max-w-5xl mx-auto h-full flex flex-col bg-white rounded-3xl md:my-6 md:shadow-sm md:border md:border-stone-100 relative space-y-6">
       <header className="flex justify-between items-center shrink-0">
         <div className="flex items-center">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-stone-400 hover:text-stone-600">
+          <button onClick={() => navigate(-1)} disabled={isSaving} className="p-2 -ml-2 text-stone-400 hover:text-stone-600 disabled:opacity-50">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-[#1A2E1A] ml-2">Nieuwe Plant</h1>
@@ -55,16 +114,35 @@ export default function AddPlant() {
             {/* Plant Selection */}
             <section>
               <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 mb-3">1. Wat wil je planten?</h2>
-              <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto pr-2 no-scrollbar">
-                {plants.map(plant => (
+              
+              <div className="relative w-full mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Zoek een gewas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  disabled={isSaving}
+                  className="w-full bg-[#F5F7F4] border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]/20 transition-all font-bold text-[#1A2E1A] disabled:opacity-50"
+                />
+              </div>
+
+              {searchTerm.trim() === '' && (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-2">Meest recent toegevoegd</p>
+              )}
+
+              <div className="grid grid-cols-1 gap-3 max-h-[40vh] overflow-y-auto pr-2 no-scrollbar">
+                {displayedPlants.map(plant => (
                   <button
                     key={plant.id}
-                    onClick={() => setSelectedPlantId(plant.id)}
+                    onClick={() => !isSaving && setSelectedPlantId(plant.id)}
+                    disabled={isSaving}
                     className={cn(
                       "p-4 rounded-2xl border text-left transition-all flex flex-col",
                       selectedPlantId === plant.id 
                         ? "border-[#5A8F5A] bg-[#E8F0E8] shadow-sm" 
-                        : "border-stone-100 bg-white hover:border-[#5A8F5A]/30"
+                        : "border-stone-100 bg-white hover:border-[#5A8F5A]/30",
+                      isSaving && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -93,6 +171,9 @@ export default function AddPlant() {
                     </div>
                   </button>
                 ))}
+                {displayedPlants.length === 0 && (
+                  <p className="text-sm text-stone-500 text-center py-4">Geen gewassen gevonden.</p>
+                )}
               </div>
             </section>
 
@@ -103,12 +184,14 @@ export default function AddPlant() {
                 {(['Zaad', 'Plant', 'Bol'] as PlantType[]).map(type => (
                   <button
                     key={type}
-                    onClick={() => setSelectedType(type)}
+                    onClick={() => !isSaving && setSelectedType(type)}
+                    disabled={isSaving}
                     className={cn(
                       "flex-1 py-3 rounded-xl font-bold transition-all border",
                       selectedType === type
                         ? "border-[#5A8F5A] bg-[#E8F0E8] text-[#1A2E1A]"
-                        : "border-stone-100 bg-white text-stone-500 hover:bg-stone-50"
+                        : "border-stone-100 bg-white text-stone-500 hover:bg-stone-50",
+                      isSaving && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     {type}
@@ -127,18 +210,19 @@ export default function AddPlant() {
               ) : (
                 <div className="grid grid-cols-4 gap-2 md:gap-3">
                   {grid.map(cell => {
-                    const isAvailable = !cell.plantId;
+                    const isAvailable = !cell.plantId || selectedCellId === cell.id;
                     const isSelected = selectedCellId === cell.id;
                     
                     return (
                       <button
                         key={cell.id}
-                        disabled={!isAvailable}
+                        disabled={!isAvailable || isSaving}
                         onClick={() => setSelectedCellId(cell.id)}
                         className={cn(
                           "aspect-square rounded-xl flex flex-col items-center justify-center transition-all text-xs font-bold",
                           !isAvailable ? "bg-stone-100 text-stone-300 cursor-not-allowed" :
-                          isSelected ? "bg-[#5A8F5A] text-white shadow-md" : "bg-white border border-stone-200 text-stone-500 hover:border-[#5A8F5A]"
+                          isSelected ? "bg-[#5A8F5A] text-white shadow-md border border-[#5A8F5A]" : "bg-white border border-stone-200 text-stone-500 hover:border-[#5A8F5A]",
+                          isSaving && "opacity-50"
                         )}
                       >
                         {String.fromCharCode(65 + cell.y)}{cell.x + 1}
@@ -148,21 +232,53 @@ export default function AddPlant() {
                 </div>
               )}
             </section>
+
+            {/* Sun Exposure Selection */}
+            <section>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-stone-500 mb-3">4. Hoeveel zonlicht krijgt dit vak?</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {(['Zon', 'Halfschaduw', 'Schaduw', 'Duisternis'] as SunPreference[]).map(sun => (
+                  <button
+                    key={sun}
+                    onClick={() => !isSaving && setSunExposure(sun)}
+                    disabled={isSaving}
+                    className={cn(
+                      "py-3 rounded-xl font-bold transition-all border",
+                      sunExposure === sun
+                        ? "border-amber-500 bg-amber-50 text-amber-700"
+                        : "border-stone-100 bg-white text-stone-500 hover:bg-stone-50",
+                      isSaving && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {sun}
+                  </button>
+                ))}
+              </div>
+            </section>
             
             {/* Desktop Action Button */}
             <div className="hidden md:block pt-6">
               <button
                 onClick={handleSave}
-                disabled={!selectedPlantId || !selectedCellId}
+                disabled={!selectedPlantId || !selectedCellId || isSaving}
                 className={cn(
                   "w-full py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 transition-all shadow-sm",
-                  selectedPlantId && selectedCellId
+                  selectedPlantId && selectedCellId && !isSaving
                     ? "bg-[#5A8F5A] text-white hover:bg-[#4A7A4A]"
                     : "bg-stone-200 text-stone-400 cursor-not-allowed"
                 )}
               >
-                <Check className="w-5 h-5" />
-                <span>Toevoegen aan Tuin</span>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Oogsttijd berekenen & opslaan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Toevoegen aan Tuin</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -174,16 +290,25 @@ export default function AddPlant() {
         <div className="max-w-md mx-auto">
           <button
             onClick={handleSave}
-            disabled={!selectedPlantId || !selectedCellId}
+            disabled={!selectedPlantId || !selectedCellId || isSaving}
             className={cn(
               "w-full py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 transition-all shadow-sm",
-              selectedPlantId && selectedCellId
+              selectedPlantId && selectedCellId && !isSaving
                 ? "bg-[#5A8F5A] text-white hover:bg-[#4A7A4A]"
                 : "bg-stone-200 text-stone-400 cursor-not-allowed"
             )}
           >
-            <Check className="w-5 h-5" />
-            <span>Toevoegen aan Tuin</span>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Oogsttijd berekenen...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-5 h-5" />
+                <span>Toevoegen aan Tuin</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -198,6 +198,15 @@
         "name": "history",
         "type": "json",
         "required": false
+      },
+      {
+        "id": "grid_custom_days",
+        "name": "customDaysToHarvest",
+        "type": "number",
+        "required": false,
+        "options": {
+          "noDecimal": true
+        }
       }
     ],
     "listRule": "@request.auth.id != ''",
@@ -430,6 +439,18 @@
         "id": "harv_notes",
         "name": "notes",
         "type": "text",
+        "required": false
+      },
+      {
+        "id": "harv_dist",
+        "name": "distributedTo",
+        "type": "json",
+        "required": false
+      },
+      {
+        "id": "harv_img",
+        "name": "imageUrl",
+        "type": "file",
         "required": false
       }
     ],

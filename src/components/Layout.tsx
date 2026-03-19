@@ -21,16 +21,16 @@ export default function Layout() {
   const getUser = (id: string | null) => users.find(u => u.id === id);
 
   const navItemsLeft = [
-    { to: '/', icon: TreeDeciduous, label: 'Tuin' },    { to: '/tasks', icon: ListTodo, label: 'Taken' },
+    { to: '/', icon: TreeDeciduous, label: 'Tuin' },
+    { to: '/tasks', icon: ListTodo, label: 'Taken' },
   ];
   
   const navItemsRight = [
     { to: '/harvests', icon: Wheat, label: 'Oogsten' },
     { to: '/plants', icon: Sprout, label: 'Gewassen' },
-    { to: '/profile', icon: Settings, label: 'Instellingen' },
   ];
 
-  const allNavItems = [...navItemsLeft, ...navItemsRight];
+  const allNavItems = [...navItemsLeft, ...navItemsRight, { to: '/profile', icon: Settings, label: 'Instellingen' }];
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-[#EAF2EA] text-stone-900 overflow-hidden font-sans">
@@ -61,13 +61,6 @@ export default function Layout() {
           <span className="text-xl text-[#5A8F5A] font-serif font-bold tracking-wide">Moestuin JTHV</span>
         </div>
 
-        <div className="px-6 mb-6">
-          <Link to="/add" className="w-full bg-[#5A8F5A] text-white py-3 px-4 rounded-xl shadow-sm hover:bg-[#4A7A4A] transition-colors flex items-center justify-center space-x-2 font-bold">
-            <Plus className="w-5 h-5" />
-            <span>Nieuwe Plant</span>
-          </Link>
-        </div>
-
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar pb-4">
           {allNavItems.map((item) => (
             <NavLink
@@ -90,20 +83,13 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto pb-24 md:pb-0 no-scrollbar relative">
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0 no-scrollbar relative">
         <Outlet />
       </main>
 
-      {/* Mobile Floating Action Button (FAB) */}
-      <div className="md:hidden fixed bottom-24 right-6 z-40">
-        <Link to="/add" className="bg-[#5A8F5A] text-white p-4 rounded-2xl shadow-lg shadow-[#5A8F5A]/40 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center">
-          <Plus className="w-6 h-6" />
-        </Link>
-      </div>
-
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] z-50">
-        <div className="flex justify-around items-center h-20 max-w-md mx-auto px-2 pb-safe">
+        <div className="flex justify-around items-center h-20 max-w-md mx-auto px-2 pb-safe relative">
           
           {navItemsLeft.map((item) => (
             <NavLink
@@ -111,7 +97,7 @@ export default function Layout() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center space-y-1 w-16 transition-colors",
+                  "flex flex-col items-center justify-center space-y-1 w-14 transition-colors",
                   isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
                 )
               }
@@ -121,13 +107,16 @@ export default function Layout() {
             </NavLink>
           ))}
 
+          {/* Spacer for FAB */}
+          <div className="w-16 flex-shrink-0" />
+
           {navItemsRight.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex flex-col items-center justify-center space-y-1 w-16 transition-colors",
+                  "flex flex-col items-center justify-center space-y-1 w-14 transition-colors",
                   isActive ? "text-[#5A8F5A]" : "text-stone-400 hover:text-stone-600"
                 )
               }
@@ -142,7 +131,7 @@ export default function Layout() {
 
       {/* Notifications Modal */}
       {isNotificationsModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6 h-full">
           <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col relative animate-in fade-in zoom-in-95 max-h-[80vh]">
             <button 
               onClick={() => setIsNotificationsModalOpen(false)}

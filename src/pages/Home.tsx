@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useStore, GridCell, Plant } from '../store/useStore';
 import { useWeather } from '../lib/weather';
 import { format, addDays, differenceInDays } from 'date-fns';
@@ -19,6 +19,7 @@ const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
 };
 
 export default function Home() {
+  const navigate = useNavigate();
   const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen, dismissedLogs, families, logout } = useStore();
   const { weather, loading } = useWeather();
   const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0] || null);
@@ -29,7 +30,6 @@ export default function Home() {
     }
   }, [grid, selectedCell]);
 
-  const [isSelectingPlant, setIsSelectingPlant] = useState(false);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -75,7 +75,6 @@ export default function Home() {
       needsWater = true;
     } else {
       const daysSinceWater = differenceInDays(new Date(), new Date(lastWateredLog.date));
-      // Reset button to "Wateren" if at least 1 day has passed, or if the plant needs it sooner (though 1 is the minimum)
       needsWater = daysSinceWater >= 1;
     }
   }
@@ -127,28 +126,6 @@ export default function Home() {
     }
   };
 
-  const handleAssignPlant = (plantId: string) => {
-    if (selectedCell) {
-      const updates = {
-        plantId,
-        plantedDate: new Date().toISOString(),
-        plantedBy: currentUser?.id || null,
-        plantType: 'Zaad' as const,
-      };
-      setGridCell(selectedCell.id, updates);
-      addLog({
-        cellId: selectedCell.id,
-        plantId,
-        date: new Date().toISOString(),
-        type: 'Planten',
-        note: `Geplant als Zaad`,
-        userId: currentUser?.id || null
-      });
-      setIsSelectingPlant(false);
-      setSelectedCell({ ...selectedCell, ...updates });
-    }
-  };
-
   const handleRemovePlant = () => {
     if (selectedCell) {
       addLog({
@@ -172,8 +149,15 @@ export default function Home() {
   };
 
   const plantedByUser = getUser(selectedCell?.plantedBy || null);
+  
+  let effectiveDaysToHarvest = selectedCell?.customDaysToHarvest ?? selectedPlant?.daysToHarvest ?? 0;
+  if (!selectedCell?.customDaysToHarvest) {
+    if (selectedCell?.plantType === 'Bol') effectiveDaysToHarvest = Math.max(1, Math.floor(effectiveDaysToHarvest * 0.75));
+    if (selectedCell?.plantType === 'Plant') effectiveDaysToHarvest = Math.max(1, Math.floor(effectiveDaysToHarvest * 0.70));
+  }
+
   const harvestDate = selectedCell?.plantedDate && selectedPlant 
-    ? addDays(new Date(selectedCell.plantedDate), selectedPlant.daysToHarvest) 
+    ? addDays(new Date(selectedCell.plantedDate), effectiveDaysToHarvest) 
     : null;
 
   const isHarvestTime = harvestDate ? (
@@ -247,11 +231,11 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-0">
+      <div className="md:grid md:grid-cols-12 md:gap-8 md:items-start flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-0 mb-0">
         {/* Grid Section */}
         <section className="md:col-span-7 lg:col-span-8 mb-8 md:mb-0">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-[#1A2E1A]">Moestuin Grid</h2>
+            <h1 className="text-3xl font-bold text-[#1A2E1A]">Moestuin Grid</h1>
             <button 
               onClick={() => { setIsEditingLayout(!isEditingLayout); setLayoutError(null); }}
               className={cn(
@@ -313,7 +297,11 @@ export default function Home() {
                 
                 let cellIsHarvestTime = false;
                 if (plant && cell.plantedDate) {
-                  const hDate = addDays(new Date(cell.plantedDate), plant.daysToHarvest);
+                  let cellDays = plant.daysToHarvest;
+                  if (cell.plantType === 'Bol') cellDays = Math.max(1, Math.floor(cellDays * 0.75));
+                  if (cell.plantType === 'Plant') cellDays = Math.max(1, Math.floor(cellDays * 0.70));
+                  
+                  const hDate = addDays(new Date(cell.plantedDate), cellDays);
                   cellIsHarvestTime = differenceInDays(new Date(), hDate) >= -7;
                 }
 
@@ -323,7 +311,6 @@ export default function Home() {
                     onClick={() => {
                       setSelectedCell(cell);
                       setIsMobileDetailModalOpen(true);
-                      if (!cell.plantId) setIsSelectingPlant(true);
                     }}
                     className={cn(
                       "relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all",
@@ -346,9 +333,8 @@ export default function Home() {
                         </span>
                       </>
                     ) : (
-                      <>
-                        <Plus className="w-6 h-6 md:w-8 md:h-8 text-stone-300 mb-1" />
-                        <span className="text-[10px] md:text-xs font-bold text-stone-300">NIEUW</span>
+                      <>                        
+                        <span className="text-[10px] md:text-xs font-bold text-stone-300">LEEG</span>
                       </>
                     )}
                   </button>
@@ -443,26 +429,42 @@ export default function Home() {
               {harvestDate && (
                 <div 
                   className={cn(
-                    "rounded-xl p-4 mb-6 flex items-center justify-between transition-all",
+                    "rounded-xl p-4 mb-6 transition-all",
                     isHarvestTime 
                       ? "bg-[#E8F0E8] border-2 border-[#5A8F5A] cursor-pointer shadow-md hover:bg-[#D0E0D0]" 
-                      : "bg-[#E8F0E8]"
+                      : "bg-[#F5F7F4] border border-stone-200"
                   )}
                   onClick={isHarvestTime ? () => setIsHarvestModalOpen(true) : undefined}
                 >
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A]">Verwachte Oogst</p>
-                    <p className="text-sm font-bold text-[#1A2E1A] flex items-center">
-                      {format(harvestDate, 'd MMMM yyyy', { locale: nl })}
-                      {isHarvestTime && <span className="ml-2 text-[10px] text-white bg-[#5A8F5A] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">Oogst Tijd!</span>}
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A]">Verwachte Oogst</p>
+                      <p className="text-sm font-bold text-[#1A2E1A] flex items-center">
+                        {format(harvestDate, 'd MMMM yyyy', { locale: nl })}
+                        {isHarvestTime && <span className="ml-2 text-[10px] text-white bg-[#5A8F5A] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">Oogst Tijd!</span>}
+                      </p>
+                    </div>
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-colors shrink-0",
+                      isHarvestTime ? "bg-[#5A8F5A] text-white" : "bg-white text-lg"
+                    )}>
+                      <span>🧺</span>
+                    </div>
                   </div>
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center shadow-sm transition-colors",
-                    isHarvestTime ? "bg-[#5A8F5A] text-white" : "bg-white text-lg"
-                  )}>
-                    <span>🧺</span>
-                  </div>
+                  
+                  {!isHarvestTime && (
+                    <div className="mt-3 pt-3 border-t border-stone-200 flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-600">
+                        Nog {differenceInDays(harvestDate, new Date())} dagen
+                      </span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setIsHarvestModalOpen(true); }}
+                        className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-3 py-1.5 rounded-lg hover:bg-[#D0E0D0] transition-colors"
+                      >
+                        Toch Oogsten
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -555,13 +557,13 @@ export default function Home() {
             <div className="py-4">
               <div className="text-center py-4">
                 <p className="text-stone-500 mb-6 font-medium">Dit vak is nog leeg.</p>
-                <button 
-                  onClick={() => setIsSelectingPlant(true)}
+                <Link
+                  to={`/add?cell=${selectedCell.id}`}
                   className="bg-[#5A8F5A] text-white px-8 py-4 rounded-2xl font-bold hover:bg-[#4A7A4A] transition-colors shadow-sm w-full flex items-center justify-center space-x-2"
                 >
                   <Plus className="w-5 h-5" />
                   <span>Plant Toevoegen</span>
-                </button>
+                </Link>
               </div>
             </div>
           )}
@@ -759,51 +761,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Plant Selection Modal */}
-      {isSelectingPlant && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
-          <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col relative animate-in fade-in zoom-in-95 max-h-[90vh]">
-            <button 
-              onClick={() => setIsSelectingPlant(false)}
-              className="absolute top-4 right-4 p-2 bg-stone-100 rounded-full text-stone-500 hover:text-stone-700 hover:bg-stone-200 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <h2 className="text-xl font-bold text-[#1A2E1A] mb-1">Plant Toevoegen</h2>
-            <p className="text-sm text-stone-500 mb-6">Kies een gewas voor vak {selectedCell && `${String.fromCharCode(65 + selectedCell.y)}${selectedCell.x + 1}`}</p>
-            
-            <div className="grid grid-cols-1 gap-3 overflow-y-auto pr-2 no-scrollbar">
-              {plants.map(plant => (
-                <button
-                  key={plant.id}
-                  onClick={() => handleAssignPlant(plant.id)}
-                  className="p-4 rounded-2xl border border-stone-100 bg-white hover:border-[#5A8F5A]/30 hover:bg-[#F5F7F4] text-left transition-colors flex flex-col shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{plant.icon}</span>
-                      <div>
-                        <span className="font-bold text-[#1A2E1A] block">{plant.name}</span>
-                        <span className="text-[10px] font-bold text-[#5A8F5A] uppercase">{plant.family}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1 bg-amber-50 px-2 py-1 rounded-md">
-                      <Sun className="w-3 h-3 text-amber-500" />
-                      <span className="text-[10px] font-bold text-amber-700">{plant.sunPreference}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="text-[10px] text-stone-500 space-y-1 mt-2">
-                    <p><span className="font-bold text-[#5A8F5A]">✓ Goed met:</span> {plant.goodNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Alles'}</p>
-                    <p><span className="font-bold text-red-400">✗ Slecht met:</span> {plant.badNeighbors.map(id => getPlant(id)?.name).join(', ') || 'Niets'}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Grid Plant Confirmation Modal */}
       {isDeleteConfirmOpen && selectedPlant && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
@@ -832,6 +789,15 @@ export default function Home() {
           </div>
         </div>
       )}
+      {/* Fixed Bottom Action (Mobile Only) */}
+      <div className="md:hidden fixed bottom-5 mb-15px left-1/2 -translate-x-1/2 z-[60]">
+        <Link 
+          to="/add"
+          className="bg-[#5A8F5A] text-white p-4 rounded-2xl shadow-lg shadow-[#5A8F5A]/40 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+        >
+          <Plus className="w-6 h-6" />
+        </Link>
+      </div>
     </div>
   );
 }

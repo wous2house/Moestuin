@@ -131,14 +131,14 @@ export default function PlantIndex() {
   return (
     <div className="p-6 mw-2000 mx-auto h-full flex flex-col space-y-6">
       <header className="flex justify-between items-center shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A2E1A]">Gewassen</h1>
+        <div>          
+          <h1 className="text-3xl font-bold text-[#1A2E1A]">Gewassen</h1>
           <p className="text-sm text-stone-500">Ontdek alles over je gewassen</p>
         </div>
         <div className="flex items-center space-x-3">
           <button 
             onClick={() => setIsAddingModalOpen(true)}
-            className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm"
+            className="bg-[#5A8F5A] text-white px-4 py-2.5 rounded-xl font-bold flex items-center space-x-2 hover:bg-[#4A7A4A] transition-colors shadow-sm hidden md:flex"
           >
             <Plus className="w-5 h-5" />
             <span className="hidden md:inline">Nieuw Gewas</span>
@@ -149,7 +149,7 @@ export default function PlantIndex() {
 
       {/* Add Plant Modal */}
       {isAddingModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6 h-full">
           <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col max-h-[90vh]">
             <h2 className="text-xl font-bold text-[#1A2E1A] mb-4">{editingPlantId ? 'Gewas Bewerken' : 'Nieuw Gewas Toevoegen'}</h2>
             
@@ -577,6 +577,16 @@ export default function PlantIndex() {
             })}
           </div>
         )}
+      </div>
+
+      {/* Fixed Bottom Action (Mobile Only) */}
+      <div className="md:hidden fixed bottom-5 mb-15px left-1/2 -translate-x-1/2 z-[60]">
+        <button
+          onClick={() => setIsAddingModalOpen(true)}
+          className="bg-[#5A8F5A] text-white p-4 rounded-2xl shadow-lg shadow-[#5A8F5A]/40 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       </div>
     </div>
   );

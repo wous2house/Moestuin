@@ -185,7 +185,7 @@ export default function Profile() {
     <div className="p-6 mw-2000 mx-auto h-full flex flex-col space-y-6">
       <header className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A2E1A]">Profiel</h1>
+          <h1 className="text-3xl font-bold text-[#1A2E1A]">Profiel</h1>
           <p className="text-sm text-stone-500">Beheer je account en gezin</p>
         </div>
         <div className="flex items-center space-x-3">

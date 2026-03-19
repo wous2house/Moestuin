@@ -35,4 +35,10 @@
       width: calc(100% + 1.25rem)!important;
     }
   }
+  .mb-15px {
+    margin-bottom: 15px;
+  }
+  .mb-0 {
+    margin-bottom: 0px;
+  }
 }

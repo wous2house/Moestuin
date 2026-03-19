@@ -46,6 +46,32 @@ export async function generatePlantData(plantName: string): Promise<any> {
   }
 }
 
+export async function calculateHarvestDate(plantName: string, plantType: string, sunPreference: string, dateStr: string): Promise<{ expectedHarvestDays: number, reason: string } | null> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Je bent een moestuin expert. Bepaal het aantal verwachte groeidagen (days to harvest) voor het gewas "${plantName}".
+Het wordt op deze datum geplant/gezaaid (in Nederland/België): ${dateStr}.
+Het wordt geplant als: ${plantType} (Zaad duurt het langst, Bol is iets sneller, Plant (jonge plant) is het snelst omdat het is voorgetrokken).
+Het krijgt het volgende zonlicht op die plek: ${sunPreference}.
+
+Houd rekening met de plantmethode, het seizoen (temperatuur/licht) en de zonneplek.
+Geef een JSON object terug met EXACT deze structuur (geen markdown blokken of extra tekst):
+{
+  "expectedHarvestDays": 60,
+  "reason": "Korte uitleg waarom dit de verwachte groeitijd is (max 2 zinnen)."
+}`,
+    });
+    const text = response.text || "{}";
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const data = JSON.parse(jsonStr);
+    return data;
+  } catch (error) {
+    console.error("Error calculating harvest date:", error);
+    return null;
+  }
+}
+
 export async function analyzePlantDisease(imageBase64: string, mimeType: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({

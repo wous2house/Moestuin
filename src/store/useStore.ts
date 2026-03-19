@@ -27,6 +27,7 @@ export interface GridCell {
   plantedDate: string | null;
   plantedBy: string | null;
   plantType: PlantType | null;
+  customDaysToHarvest?: number | null;
   sunExposure: SunPreference; // The actual sun exposure of this spot
   history: { year: number; family: PlantFamily }[]; // For crop rotation
 }
@@ -146,6 +147,25 @@ interface AppState {
   initializeFromDB: () => Promise<void>;
 }
 
+const processImage = async (dataUrl: string) => {
+  if (!dataUrl || !dataUrl.startsWith('data:image')) return null;
+  try {
+    const { default: imageCompression } = await import('browser-image-compression');
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const options = {
+      maxSizeMB: 0.8,
+      maxWidthOrHeight: 1280,
+      useWebWorker: true
+    };
+    return await imageCompression(blob, options);
+  } catch (error) {
+    console.error('Image compression failed, using original', error);
+    const res = await fetch(dataUrl);
+    return await res.blob();
+  }
+};
+
 // Initial empty state
 export const useStore = create<AppState>()(
   persist(
@@ -177,6 +197,16 @@ export const useStore = create<AppState>()(
         return;
       }
 
+      // Unsubscribe from everything before re-subscribing
+      pb.collection('plants').unsubscribe();
+      pb.collection('grid').unsubscribe();
+      pb.collection('tasks').unsubscribe();
+      pb.collection('families').unsubscribe();
+      pb.collection('users').unsubscribe();
+      pb.collection('seedBox').unsubscribe();
+      pb.collection('harvests').unsubscribe();
+      pb.collection('logs').unsubscribe();
+
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
         pb.collection('plants').getFullList().catch(e => { console.error('plants error', e); return []; }),
         pb.collection('grid').getFullList().catch(e => { console.error('grid error', e); return []; }),
@@ -188,10 +218,55 @@ export const useStore = create<AppState>()(
         pb.collection('logs').getFullList().catch(e => { console.error('logs error', e); return []; }),
       ]);
 
+      const mappedPlants = plants.map((p: any) => ({
+        ...p,
+        imageUrl: p.imageUrl ? pb.files.getUrl(p, p.imageUrl) : undefined
+      }));
+
+      const mappedLogs = logs.map((l: any) => ({
+        ...l,
+        imageUrl: l.imageUrl ? pb.files.getUrl(l, l.imageUrl) : undefined
+      }));
+
+      const mappedHarvests = harvests.map((h: any) => ({
+        ...h,
+        imageUrl: h.imageUrl ? pb.files.getUrl(h, h.imageUrl) : undefined
+      }));
+
       let fetchedGrid = (grid as any[]).sort((a, b) => {
         if (a.y !== b.y) return a.y - b.y;
         return a.x - b.x;
       });
+
+      // Deduplicate grid cells to prevent too many rows bug
+      const uniqueCells = new Map<string, any>();
+      const cellsToDelete: any[] = [];
+
+      for (const cell of fetchedGrid) {
+        const key = `${cell.x}-${cell.y}`;
+        if (uniqueCells.has(key)) {
+          const existing = uniqueCells.get(key);
+          // Prefer keeping cells with plants
+          if (!existing.plantId && cell.plantId) {
+            cellsToDelete.push(existing);
+            uniqueCells.set(key, cell);
+          } else {
+            cellsToDelete.push(cell);
+          }
+        } else {
+          uniqueCells.set(key, cell);
+        }
+      }
+
+      fetchedGrid = Array.from(uniqueCells.values()).sort((a, b) => {
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+      });
+
+      if (cellsToDelete.length > 0) {
+        console.log(`Found ${cellsToDelete.length} duplicate grid cells, cleaning up...`);
+        Promise.all(cellsToDelete.map(c => pb.collection('grid').delete(c.id).catch(console.error)));
+      }
       
       // Auto-generate a 4x4 grid if completely empty
       if (fetchedGrid.length === 0 && pb.authStore.isValid) {
@@ -247,17 +322,27 @@ export const useStore = create<AppState>()(
       }
 
       set({
-        plants: plants as any,
+        plants: mappedPlants,
         grid: fetchedGrid as any,
         gridWidth: calculatedWidth,
         gridHeight: calculatedHeight,
         tasks: tasks as any,
         families: families as any,
-        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined })) as any,
+        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
         seedBox: seedBox as any,
-        harvests: harvests as any,
-        logs: logs as any,
+        harvests: mappedHarvests,
+        logs: mappedLogs,
       });
+
+      // Subscribe to realtime changes
+      const collections = ['plants', 'grid', 'tasks', 'families', 'users', 'seedBox', 'harvests', 'logs'];
+      collections.forEach(coll => {
+        pb.collection(coll).subscribe('*', async () => {
+          const state = get();
+          state.initializeFromDB();
+        });
+      });
+
     } catch (e: any) {
       console.error("Failed to initialize from DB completely", e?.response || e);
     }
@@ -629,14 +714,32 @@ export const useStore = create<AppState>()(
   addLog: async (log) => {
     try {
       const { pb } = await import('../lib/pb');
-      const record = await pb.collection('logs').create(log);
+      let payload: any = { ...log };
+      
+      if (log.imageUrl && log.imageUrl.startsWith('data:image')) {
+        const compressedBlob = await processImage(log.imageUrl);
+        if (compressedBlob) {
+          const formData = new FormData();
+          Object.entries(log).forEach(([key, value]) => {
+            if (key !== 'imageUrl' && value !== undefined && value !== null) {
+              formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value as string);
+            }
+          });
+          formData.append('imageUrl', compressedBlob, 'photo.jpg');
+          payload = formData;
+        }
+      }
+      
+      const record = await pb.collection('logs').create(payload);
+      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : log.imageUrl;
+
       set((state) => ({
-        logs: [...state.logs, { ...log, id: record.id } as GrowthLog]
+        logs: [{ ...log, id: record.id, imageUrl: finalImageUrl } as GrowthLog, ...state.logs]
       }));
     } catch (e) {
       console.error("Failed to add log to PB", e);
       set((state) => ({
-        logs: [...state.logs, { ...log, id: `l-${Date.now()}` } as GrowthLog]
+        logs: [{ ...log, id: `l-${Date.now()}` } as GrowthLog, ...state.logs]
       }));
     }
   },
@@ -657,14 +760,32 @@ export const useStore = create<AppState>()(
   addHarvest: async (harvest) => {
     try {
       const { pb } = await import('../lib/pb');
-      const record = await pb.collection('harvests').create(harvest);
+      let payload: any = { ...harvest };
+      
+      if (harvest.imageUrl && harvest.imageUrl.startsWith('data:image')) {
+        const compressedBlob = await processImage(harvest.imageUrl);
+        if (compressedBlob) {
+          const formData = new FormData();
+          Object.entries(harvest).forEach(([key, value]) => {
+            if (key !== 'imageUrl' && value !== undefined && value !== null) {
+              formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value as string);
+            }
+          });
+          formData.append('imageUrl', compressedBlob, 'harvest.jpg');
+          payload = formData;
+        }
+      }
+
+      const record = await pb.collection('harvests').create(payload);
+      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : harvest.imageUrl;
+
       set((state) => ({
-        harvests: [...state.harvests, { ...harvest, id: record.id } as HarvestRecord]
+        harvests: [{ ...harvest, id: record.id, imageUrl: finalImageUrl } as HarvestRecord, ...state.harvests]
       }));
     } catch (e) {
       console.error("Failed to add harvest to PB", e);
       set((state) => ({
-        harvests: [...state.harvests, { ...harvest, id: `h-${Date.now()}` } as HarvestRecord]
+        harvests: [{ ...harvest, id: `h-${Date.now()}` } as HarvestRecord, ...state.harvests]
       }));
     }
   },
@@ -672,15 +793,30 @@ export const useStore = create<AppState>()(
   updateHarvest: async (id, updates) => {
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('harvests').update(id, updates);
+      let payload: any = { ...updates };
+      
+      if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
+        const compressedBlob = await processImage(updates.imageUrl);
+        if (compressedBlob) {
+          const formData = new FormData();
+          Object.entries(updates).forEach(([key, value]) => {
+            if (key !== 'imageUrl' && value !== undefined && value !== null) {
+              formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value as string);
+            }
+          });
+          formData.append('imageUrl', compressedBlob, 'harvest.jpg');
+          payload = formData;
+        }
+      }
+
+      const record = await pb.collection('harvests').update(id, payload);
+      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : updates.imageUrl;
+
       set((state) => ({
-        harvests: state.harvests.map(h => h.id === id ? { ...h, ...updates } : h)
+        harvests: state.harvests.map(h => h.id === id ? { ...h, ...updates, ...(finalImageUrl && { imageUrl: finalImageUrl }) } : h)
       }));
     } catch (e) {
       console.error("Failed to update harvest in PB", e);
-      set((state) => ({
-        harvests: state.harvests.map(h => h.id === id ? { ...h, ...updates } : h)
-      }));
     }
   },
 
@@ -798,7 +934,7 @@ export const useStore = create<AppState>()(
           name: user.name || user.username || user.email || 'Gebruiker',
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
-          avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined
+          avatar: user.avatar ? pb.files.getUrl(user, user.avatar) : undefined
         }
       }));
     } catch (e) {
@@ -833,17 +969,34 @@ export const useStore = create<AppState>()(
   updateUser: async (id, updates) => {
     try {
       const { pb } = await import('../lib/pb');
-      const pbUpdates: any = { ...updates };
+      let payload: any = { ...updates };
       
-      if (updates.avatar) {
-         console.warn("Avatar update via store is currently local-only. Full PB file upload required.");
+      if (updates.avatar && updates.avatar.startsWith('data:image')) {
+        const compressedBlob = await processImage(updates.avatar);
+        if (compressedBlob) {
+          const formData = new FormData();
+          Object.entries(updates).forEach(([key, value]) => {
+            if (key !== 'avatar' && value !== undefined && value !== null) {
+              formData.append(key, typeof value === 'object' ? JSON.stringify(value) : value as string);
+            }
+          });
+          formData.append('avatar', compressedBlob, 'avatar.jpg');
+          payload = formData;
+        } else {
+          delete payload.avatar;
+        }
       }
 
-      await pb.collection('users').update(id, pbUpdates);
+      const record = await pb.collection('users').update(id, payload);
       
+      const finalUpdates = { ...updates };
+      if (record.avatar && updates.avatar && updates.avatar.startsWith('data:image')) {
+         finalUpdates.avatar = pb.files.getUrl(record, record.avatar);
+      }
+
       set((state) => ({
-        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u),
-        currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...updates } : state.currentUser
+        users: state.users.map(u => u.id === id ? { ...u, ...finalUpdates } : u),
+        currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...finalUpdates } : state.currentUser
       }));
     } catch (e) {
       console.error("Failed to update user in PB", e);
