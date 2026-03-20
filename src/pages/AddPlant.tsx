@@ -286,7 +286,7 @@ export default function AddPlant() {
       </div>
 
       {/* Fixed Bottom Action (Mobile Only) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] bg-gradient-to-t from-white via-white to-transparent">
         <div className="max-w-md mx-auto">
           <button
             onClick={handleSave}
