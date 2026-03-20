@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useStore, HarvestRecord, GridCell } from '../store/useStore';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { nl } from 'date-fns/locale';
@@ -13,7 +13,7 @@ export default function Harvests() {
   const [filterPlantFamily, setFilterPlantFamily] = useState<string>('all');
   const [filterUserFamily, setFilterUserFamily] = useState<string>('all');
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   
@@ -156,10 +156,10 @@ export default function Harvests() {
           userId: currentUser?.id || null
         });
         const updates = {
-          plantId: null,
-          plantedDate: null,
-          plantedBy: null,
-          plantType: null,
+          plantId: "",
+          plantedDate: "",
+          plantedBy: "",
+          plantType: "" as any,
         };
         setGridCell(selectedCellToHarvest.id, updates);
       }

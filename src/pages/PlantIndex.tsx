@@ -11,7 +11,7 @@ export default function PlantIndex() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'index' | 'zaden'>('index');
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   
@@ -102,6 +102,9 @@ export default function PlantIndex() {
   const handleEditPlant = (plant: Plant) => {
     setEditingPlantId(plant.id);
     setGeneratedPlantData(plant);
+    setAddToSeedBox(false);
+    setSeedQuantity('');
+    setSeedUnit('stuks');
     setIsAddingModalOpen(true);
   };
 
@@ -439,7 +442,7 @@ export default function PlantIndex() {
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A] mt-0.5">{plant.family}</p>
                     </div>
                   </div>
-                  {currentUser?.role === 'Admin' && (
+                  {true && (
                     <div className="flex items-center space-x-1">
                       <button 
                         onClick={() => handleEditPlant(plant)}
@@ -506,7 +509,7 @@ export default function PlantIndex() {
                         <p className="text-xs text-stone-500">{plant.family}</p>
                       </div>
                     </div>
-                    {currentUser?.role === 'Admin' && !isEditing && (
+                    {!isEditing && (
                       <div className="flex items-center space-x-1">
                         <button 
                           onClick={() => {

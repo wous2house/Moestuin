@@ -16,7 +16,7 @@ export default function Tasks() {
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [newTaskDescription, setNewTaskDescription] = useState('');
@@ -24,7 +24,7 @@ export default function Tasks() {
   const [newTaskDueDate, setNewTaskDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newTaskEndDate, setNewTaskEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [newTaskType, setNewTaskType] = useState('Water');
-  const [newTaskAssignedTo, setNewTaskAssignedTo] = useState<string>('');
+  const [newTaskAssignedTo, setNewTaskAssignedTo] = useState<string[]>([]);
   const [newTaskCellId, setNewTaskCellId] = useState<string>('');
   const [recurringInterval, setRecurringInterval] = useState(1);
   const [recurringUnit, setRecurringUnit] = useState<'dagen' | 'weken' | 'maanden'>('weken');
@@ -81,7 +81,7 @@ export default function Tasks() {
       setNewTaskDueDate(safeDate(task.dueDate));
       setNewTaskEndDate(safeDate(task.endDate));
       setNewTaskType(task.type || 'Water');
-      setNewTaskAssignedTo(task.assignedTo || '');
+      setNewTaskAssignedTo(task.assignedTo || []);
       setNewTaskCellId(task.relatedCellId || '');
       setIsEditingTask(true);
       if (!viewingTask) {
@@ -102,7 +102,7 @@ export default function Tasks() {
     setDateType('single');
     setNewTaskDueDate(format(new Date(), 'yyyy-MM-dd'));
     setNewTaskEndDate(format(new Date(), 'yyyy-MM-dd'));
-    setNewTaskAssignedTo('');
+    setNewTaskAssignedTo([]);
     setNewTaskCellId('');
     setRecurringInterval(1);
     setRecurringUnit('weken');
@@ -113,11 +113,13 @@ export default function Tasks() {
       const taskData = {
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim(),
-        dueDate: dateType === 'continuous' ? null : newTaskDueDate,
-        endDate: dateType === 'period' ? newTaskEndDate : null,
-        assignedTo: newTaskAssignedTo || null,
-        relatedCellId: newTaskCellId || null,
+        dueDate: dateType === 'continuous' ? "" : (newTaskDueDate || ""),
+        endDate: dateType === 'period' ? (newTaskEndDate || "") : "",
+        assignedTo: newTaskAssignedTo,
+        relatedCellId: newTaskCellId || "",
         type: newTaskType as any,
+        recurring_interval: dateType === 'recurring' ? recurringInterval : null,
+        recurring_unit: dateType === 'recurring' ? recurringUnit : "",
         recurring: dateType === 'recurring' ? { interval: recurringInterval, unit: recurringUnit } : null
       };
 
@@ -167,7 +169,7 @@ export default function Tasks() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {sortedTasks.map(task => {
             const isOverdue = task.dueDate ? isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && !task.completed : false;
-            const assignedUser = users.find(u => u.id === task.assignedTo);
+            const assignedUsers = task.assignedTo && task.assignedTo.length > 0 ? users.filter(u => task.assignedTo.includes(u.id)) : [];
             const relatedCell = task.relatedCellId ? grid.find(c => c.id === task.relatedCellId) : null;
             const relatedPlant = relatedCell?.plantId ? plants.find(p => p.id === relatedCell.plantId) : null;
 
@@ -224,20 +226,24 @@ export default function Tasks() {
                       }
                     </span>
                     
-                    {assignedUser ? (
+                    {assignedUsers.length > 0 ? (
                       <button 
                         onClick={(e) => { e.stopPropagation(); !task.completed && setReassigningTaskId(task.id); }}
                         disabled={task.completed}
                         className="flex items-center space-x-1.5 bg-[#F5F7F4] hover:bg-[#E8F0E8] transition-colors px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {assignedUser.avatar ? (
-                          <img src={assignedUser.avatar} alt="" className="w-4 h-4 rounded-full" />
-                        ) : (
-                          <div className="w-4 h-4 rounded-full bg-[#E8F0E8] flex items-center justify-center text-[8px] font-bold text-[#5A8F5A]">
-                            {assignedUser.name?.charAt(0) || '?'}
-                          </div>
-                        )}
-                        <span className="text-xs font-bold text-stone-600">{assignedUser.name}</span>
+                        <div className="flex -space-x-1">
+                          {assignedUsers.slice(0, 3).map((u, i) => (
+                            <div key={u.id} className={cn("w-4 h-4 rounded-full border border-white bg-[#E8F0E8] flex items-center justify-center text-[8px] font-bold text-[#5A8F5A] z-10", i > 0 && "-ml-1")}>
+                              {u.avatar ? (
+                                <img src={u.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                              ) : (
+                                u.name?.charAt(0) || '?'
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-xs font-bold text-stone-600">{assignedUsers.length === 1 ? assignedUsers[0].name : `${assignedUsers.length} personen`}</span>
                       </button>
                     ) : (
                       <button
@@ -462,16 +468,31 @@ export default function Tasks() {
 
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Toewijzen Aan</label>
-                    <select 
-                      value={newTaskAssignedTo}
-                      onChange={(e) => setNewTaskAssignedTo(e.target.value)}
-                      className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
-                    >
-                      <option value="">Iedereen</option>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewTaskAssignedTo([])}
+                        className={cn("px-3 py-1.5 rounded-xl text-sm font-bold transition-colors", newTaskAssignedTo.length === 0 ? "bg-[#5A8F5A] text-white" : "bg-[#F5F7F4] text-stone-600")}
+                      >
+                        Iedereen
+                      </button>
                       {users.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            if (newTaskAssignedTo.includes(u.id)) {
+                              setNewTaskAssignedTo(newTaskAssignedTo.filter(id => id !== u.id));
+                            } else {
+                              setNewTaskAssignedTo([...newTaskAssignedTo, u.id]);
+                            }
+                          }}
+                          className={cn("px-3 py-1.5 rounded-xl text-sm font-bold transition-colors", newTaskAssignedTo.includes(u.id) ? "bg-[#5A8F5A] text-white" : "bg-[#F5F7F4] text-stone-600")}
+                        >
+                          {u.name}
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   <div>
@@ -741,7 +762,7 @@ export default function Tasks() {
             <p className="text-sm text-stone-500 mb-6">Aan wie wil je deze taak toewijzen?</p>
             <div className="space-y-2 mb-6">
               <button
-                onClick={() => { updateTask(reassigningTaskId, { assignedTo: null }); setReassigningTaskId(null); }}
+                onClick={() => { updateTask(reassigningTaskId, { assignedTo: [] }); setReassigningTaskId(null); }}
                 className="w-full text-left p-3 rounded-xl hover:bg-[#F5F7F4] transition-colors text-sm font-bold text-stone-600 border border-transparent hover:border-stone-200"
               >
                 Iedereen (Niemand specifiek)
@@ -749,7 +770,7 @@ export default function Tasks() {
               {users.map(u => (
                 <button
                   key={u.id}
-                  onClick={() => { updateTask(reassigningTaskId, { assignedTo: u.id }); setReassigningTaskId(null); }}
+                  onClick={() => { updateTask(reassigningTaskId, { assignedTo: [u.id] }); setReassigningTaskId(null); }}
                   className="w-full text-left p-3 rounded-xl hover:bg-[#F5F7F4] transition-colors text-sm font-bold text-[#1A2E1A] border border-transparent hover:border-stone-200 flex items-center space-x-3"
                 >
                   {u.avatar ? (

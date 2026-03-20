@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { TreeDeciduous, ListTodo, Sprout, Settings, Plus, Leaf, Bell, X, AlertCircle, Wheat } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { format, isValid } from 'date-fns';
@@ -8,8 +8,9 @@ import { cn } from '../lib/utils';
 
 export default function Layout() {
   const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
+  const navigate = useNavigate();
 
-  const activeTasks = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)) || [];
+  const activeTasks = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))) || [];
   const activeTasksCount = activeTasks.length;
 
   const unreadLogs = logs
@@ -148,7 +149,11 @@ export default function Layout() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-3">Aan jou toegewezen taken</h3>
                   <div className="space-y-3">
                     {activeTasks.map(task => (
-                      <div key={task.id} className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                      <button 
+                        key={task.id} 
+                        onClick={() => { setIsNotificationsModalOpen(false); navigate('/tasks'); }}
+                        className="w-full text-left bg-red-50 border border-red-100 p-4 rounded-2xl hover:bg-red-100 transition-colors"
+                      >
                         <div className="flex items-start space-x-3">
                           <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
                           <div>
@@ -161,7 +166,7 @@ export default function Layout() {
                             )}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -181,7 +186,16 @@ export default function Layout() {
                       const relatedCell = grid.find(c => c.id === log.cellId);
                       const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
                       return (
-                        <div key={log.id} className="relative flex items-center space-x-3 bg-[#F5F7F4] p-3 pr-10 rounded-xl border border-stone-100 group">
+                        <button 
+                          key={log.id} 
+                          onClick={() => {
+                            setIsNotificationsModalOpen(false);
+                            if (currentUser) dismissLog(currentUser.id, log.id);
+                            if (log.type === 'Oogst') navigate('/harvests');
+                            else navigate('/');
+                          }}
+                          className="w-full text-left relative flex items-center space-x-3 bg-[#F5F7F4] p-3 pr-10 rounded-xl border border-stone-100 group hover:bg-[#E8F0E8] transition-colors"
+                        >
                           {logUser?.avatar ? (
                             <img src={logUser.avatar} alt="" className="w-8 h-8 rounded-full" />
                           ) : (
@@ -194,15 +208,16 @@ export default function Layout() {
                             <p className="text-[10px] text-stone-500">In vak {cellName} • {isValid(new Date(log.date)) ? format(new Date(log.date), 'd MMM HH:mm', { locale: nl }) : 'Onbekend'}</p>
                           </div>
                           <button 
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (currentUser) dismissLog(currentUser.id, log.id);
                             }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200 rounded-full transition-colors"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-200 rounded-full transition-colors z-10"
                           >
                             <X className="w-4 h-4" />
                           </button>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>

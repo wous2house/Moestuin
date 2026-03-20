@@ -39,10 +39,12 @@ export interface Task {
   dueDate: string | null; // null means continuous
   endDate?: string | null; // if set, task is a period from dueDate to endDate
   completed: boolean;
-  assignedTo: string | null;
-  originalAssignedTo?: string | null;
+  assignedTo: string[];
+  originalAssignedTo?: string[];
   relatedCellId: string | null;
   type: 'Water' | 'Oogst' | 'Snoei' | 'Zaai' | 'Overig';
+  recurring_interval?: number | null;
+  recurring_unit?: 'dagen' | 'weken' | 'maanden' | string | null;
   recurring?: {
     interval: number;
     unit: 'dagen' | 'weken' | 'maanden';
@@ -79,6 +81,7 @@ export interface HarvestRecord {
   yieldQuantity: number;
   yieldUnit: string;
   notes?: string;
+  imageUrl?: string;
   distributedTo?: { familyId: string; quantity: number }[];
 }
 
@@ -158,7 +161,7 @@ const processImage = async (dataUrl: string) => {
       maxWidthOrHeight: 1280,
       useWebWorker: true
     };
-    return await imageCompression(blob, options);
+    return await imageCompression(new File([blob], 'image.jpg', { type: blob.type }), options);
   } catch (error) {
     console.error('Image compression failed, using original', error);
     const res = await fetch(dataUrl);
@@ -208,15 +211,20 @@ export const useStore = create<AppState>()(
       pb.collection('logs').unsubscribe();
 
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
-        pb.collection('plants').getFullList().catch(e => { console.error('plants error', e); return []; }),
-        pb.collection('grid').getFullList().catch(e => { console.error('grid error', e); return []; }),
-        pb.collection('tasks').getFullList().catch(e => { console.error('tasks error', e); return []; }),
-        pb.collection('families').getFullList().catch(e => { console.error('families error', e); return []; }),
-        pb.collection('users').getFullList().catch(e => { console.error('users error', e); return []; }),
-        pb.collection('seedBox').getFullList().catch(e => { console.error('seedBox error', e); return []; }),
-        pb.collection('harvests').getFullList().catch(e => { console.error('harvests error', e); return []; }),
-        pb.collection('logs').getFullList().catch(e => { console.error('logs error', e); return []; }),
+        pb.collection('plants').getFullList({ requestKey: null }).catch(e => { console.error('plants error', e); return null; }),
+        pb.collection('grid').getFullList({ requestKey: null }).catch(e => { console.error('grid error', e); return null; }),
+        pb.collection('tasks').getFullList({ requestKey: null }).catch(e => { console.error('tasks error', e); return null; }),
+        pb.collection('families').getFullList({ requestKey: null }).catch(e => { console.error('families error', e); return null; }),
+        pb.collection('users').getFullList({ requestKey: null }).catch(e => { console.error('users error', e); return null; }),
+        pb.collection('seedBox').getFullList({ requestKey: null }).catch(e => { console.error('seedBox error', e); return null; }),
+        pb.collection('harvests').getFullList({ requestKey: null }).catch(e => { console.error('harvests error', e); return null; }),
+        pb.collection('logs').getFullList({ requestKey: null }).catch(e => { console.error('logs error', e); return null; }),
       ]);
+
+      if (!plants || !grid || !tasks || !families || !users || !seedBox || !harvests || !logs) {
+        console.error('One or more collections failed to load. Aborting initializeFromDB to prevent data loss.');
+        return;
+      }
 
       const mappedPlants = plants.map((p: any) => ({
         ...p,
@@ -337,9 +345,66 @@ export const useStore = create<AppState>()(
       // Subscribe to realtime changes
       const collections = ['plants', 'grid', 'tasks', 'families', 'users', 'seedBox', 'harvests', 'logs'];
       collections.forEach(coll => {
-        pb.collection(coll).subscribe('*', async () => {
+        pb.collection(coll).subscribe('*', async (e) => {
           const state = get();
           state.initializeFromDB();
+
+          if (state.pushNotifications && 'Notification' in window && Notification.permission === 'granted') {
+            const { action, record } = e;
+            const title = 'Moestuin Update';
+            let body = '';
+            
+            try {
+              if (coll === 'tasks' && (action === 'create' || action === 'update')) {
+                 const existingTask = state.tasks.find(t => t.id === record.id);
+                 const wasAssigned = existingTask?.assignedTo?.includes(state.currentUser?.id || '');
+                 const isAssigned = record.assignedTo && Array.isArray(record.assignedTo) && record.assignedTo.includes(state.currentUser?.id);
+                 
+                 if (isAssigned && !wasAssigned && !record.completed) {
+                   body = `Nieuwe taak aan jou toegewezen: ${record.title}`;
+                 }
+              }
+              else if (coll === 'grid' && action === 'update') {
+                 const existingCell = state.grid.find(c => c.id === record.id);
+                 if (record.plantId && record.plantedBy && record.plantedBy !== state.currentUser?.id && !existingCell?.plantId) {
+                    const plant = state.plants.find(p => p.id === record.plantId);
+                    if (plant) body = `Iemand heeft ${plant.name} geplant!`;
+                 }
+              }
+              else if (coll === 'harvests' && action === 'create') {
+                 if (record.userId && record.userId !== state.currentUser?.id) {
+                    body = `Nieuwe oogst geregistreerd: ${record.yieldQuantity} ${record.yieldUnit} ${record.plantName}`;
+                 }
+              }
+              else if (coll === 'logs' && action === 'create') {
+                 if (record.userId && record.userId !== state.currentUser?.id) {
+                    if (record.type === 'Planten') body = `Er is een nieuw gewas geplant.`;
+                    // Removed redundant harvest log since we already listen to 'harvests' collection
+                 }
+              }
+
+              if (body) {
+                // To prevent spamming on rapid updates, check if the same notification was just sent
+                const lastNotif = sessionStorage.getItem('last_notif_body');
+                if (lastNotif !== body) {
+                  const showNotif = () => {
+                    if ('serviceWorker' in navigator) {
+                      navigator.serviceWorker.ready.then(registration => {
+                        registration.showNotification(title, { body, icon: '/logo.png' });
+                      }).catch(() => new Notification(title, { body, icon: '/logo.png' }));
+                    } else {
+                      new Notification(title, { body, icon: '/logo.png' });
+                    }
+                  };
+                  showNotif();
+                  sessionStorage.setItem('last_notif_body', body);
+                  setTimeout(() => sessionStorage.removeItem('last_notif_body'), 5000);
+                }
+              }
+            } catch (err) {
+              console.error('Error showing notification', err);
+            }
+          }
         });
       });
 
@@ -518,12 +583,12 @@ export const useStore = create<AppState>()(
       if (existing) {
         let recordId = existing.id;
         if (!recordId) {
-           const records = await pb.collection('seedBox').getFullList({ filter: `plantId="${seed.plantId}"` });
+           const records = await pb.collection('seedBox').getFullList({ filter: `plantId="${seed.plantId}"`, requestKey: null });
            if (records.length > 0) recordId = records[0].id;
         }
         
         if (recordId) {
-          const updated = await pb.collection('seedBox').update(recordId, { quantity: existing.quantity + seed.quantity, unit: seed.unit || existing.unit });
+          const updated = await pb.collection('seedBox').update(recordId, { quantity: existing.quantity + seed.quantity, unit: seed.unit || existing.unit }, { requestKey: null });
           set((state) => ({
             seedBox: state.seedBox.map(s => s.plantId === seed.plantId 
               ? { ...s, id: updated.id, quantity: s.quantity + seed.quantity, unit: seed.unit || s.unit } 
@@ -533,10 +598,15 @@ export const useStore = create<AppState>()(
         }
       }
       
-      const record = await pb.collection('seedBox').create(seed);
+      const payload = { ...seed };
+      if (!payload.unit) delete payload.unit;
+      const record = await pb.collection('seedBox').create(payload, { requestKey: null });
       set((state) => ({ seedBox: [...state.seedBox, { ...seed, id: record.id }] }));
-    } catch (e) {
-      console.error("Failed to add seed to PB", e);
+    } catch (e: any) {
+      console.error("Failed to add seed to PB", e?.response || e);
+      if (typeof window !== 'undefined' && e?.response?.data) {
+        alert("Oeps! PocketBase weigert de zaden. Controleer of de velden exact kloppen: " + JSON.stringify(e.response.data));
+      }
       set((state) => {
         const existing = state.seedBox.find(s => s.plantId === seed.plantId);
         if (existing) {
@@ -546,7 +616,7 @@ export const useStore = create<AppState>()(
               : s)
           };
         }
-        return { seedBox: [...state.seedBox, seed] };
+        return { seedBox: [...state.seedBox, { ...seed, id: `s-${Date.now()}` }] };
       });
     }
   },
@@ -554,7 +624,7 @@ export const useStore = create<AppState>()(
   updateSeed: async (id, updates) => {
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('seedBox').update(id, updates);
+      await pb.collection('seedBox').update(id, updates, { requestKey: null });
       set((state) => ({
         seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
       }));
@@ -572,12 +642,12 @@ export const useStore = create<AppState>()(
       const state = get();
       const seed = state.seedBox.find(s => s.id === idOrPlantId || s.plantId === idOrPlantId);
 
-      if (seed && seed.id) {
-        await pb.collection('seedBox').delete(seed.id);
-      } else {
-        const records = await pb.collection('seedBox').getFullList({ filter: `plantId="${idOrPlantId}"` });
+      if (seed && seed.id && !seed.id.startsWith('s-')) {
+        await pb.collection('seedBox').delete(seed.id, { requestKey: null });
+      } else if (!seed?.id?.startsWith('s-')) {
+        const records = await pb.collection('seedBox').getFullList({ filter: `plantId="${idOrPlantId}"`, requestKey: null });
         for (const record of records) {
-          await pb.collection('seedBox').delete(record.id);
+          await pb.collection('seedBox').delete(record.id, { requestKey: null });
         }
       }
 
@@ -599,11 +669,15 @@ export const useStore = create<AppState>()(
       const task = state.tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      if (!task.completed && task.recurring && task.dueDate) {
+      const hasRecurring = task.recurring || task.recurring_interval;
+      const interval = task.recurring?.interval || task.recurring_interval;
+      const unit = task.recurring?.unit || task.recurring_unit;
+
+      if (!task.completed && hasRecurring && task.dueDate) {
         const newDate = new Date(task.dueDate);
-        if (task.recurring.unit === 'dagen') newDate.setDate(newDate.getDate() + task.recurring.interval);
-        else if (task.recurring.unit === 'weken') newDate.setDate(newDate.getDate() + task.recurring.interval * 7);
-        else if (task.recurring.unit === 'maanden') newDate.setMonth(newDate.getMonth() + task.recurring.interval);
+        if (unit === 'dagen') newDate.setDate(newDate.getDate() + interval);
+        else if (unit === 'weken') newDate.setDate(newDate.getDate() + interval * 7);
+        else if (unit === 'maanden') newDate.setMonth(newDate.getMonth() + interval);
         
         const newTaskData = {
           ...task,
@@ -614,12 +688,12 @@ export const useStore = create<AppState>()(
         const { id: _, ...newTaskDataWithoutId } = newTaskData;
         
         const [updatedRecord, newRecord] = await Promise.all([
-          pb.collection('tasks').update(taskId, { completed: true, recurring: null }),
+          pb.collection('tasks').update(taskId, { completed: true, recurring: null, recurring_interval: null, recurring_unit: "" }),
           pb.collection('tasks').create(newTaskDataWithoutId)
         ]);
         
         set((state) => ({
-          tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null } : t).concat({ ...newTaskData, id: newRecord.id } as Task)
+          tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null, recurring_interval: null, recurring_unit: "" } : t).concat({ ...newTaskData, id: newRecord.id } as Task)
         }));
       } else {
         await pb.collection('tasks').update(taskId, { completed: !task.completed });
@@ -636,11 +710,15 @@ export const useStore = create<AppState>()(
         const task = state.tasks.find(t => t.id === taskId);
         if (!task) return state;
 
-        if (!task.completed && task.recurring && task.dueDate) {
+        const hasRecurring = task.recurring || task.recurring_interval;
+        const interval = task.recurring?.interval || task.recurring_interval;
+        const unit = task.recurring?.unit || task.recurring_unit;
+
+        if (!task.completed && hasRecurring && task.dueDate) {
           const newDate = new Date(task.dueDate);
-          if (task.recurring.unit === 'dagen') newDate.setDate(newDate.getDate() + task.recurring.interval);
-          else if (task.recurring.unit === 'weken') newDate.setDate(newDate.getDate() + task.recurring.interval * 7);
-          else if (task.recurring.unit === 'maanden') newDate.setMonth(newDate.getMonth() + task.recurring.interval);
+          if (unit === 'dagen') newDate.setDate(newDate.getDate() + interval);
+          else if (unit === 'weken') newDate.setDate(newDate.getDate() + interval * 7);
+          else if (unit === 'maanden') newDate.setMonth(newDate.getMonth() + interval);
           
           const newTask = {
             ...task,
@@ -650,7 +728,7 @@ export const useStore = create<AppState>()(
           };
           
           return {
-            tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null } : t).concat(newTask)
+            tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null, recurring_interval: null, recurring_unit: "" } : t).concat(newTask)
           };
         }
 
@@ -669,16 +747,16 @@ export const useStore = create<AppState>()(
     vacationStartDate: startDate,
     vacationEndDate: endDate,
     tasks: state.tasks.map(t => {
-      if (!t.completed && t.assignedTo === state.currentUser?.id) {
+      if (!t.completed && t.assignedTo && t.assignedTo.includes(state.currentUser?.id || '')) {
         const tStart = t.dueDate ? new Date(t.dueDate) : null;
         const tEnd = t.endDate ? new Date(t.endDate) : tStart;
-        
+
         const vStart = new Date(startDate);
         const vEnd = new Date(endDate);
         vEnd.setHours(23, 59, 59, 999);
-        
+
         let overlaps = false;
-        
+
         if (!tStart) {
            overlaps = true;
         } else {
@@ -686,14 +764,14 @@ export const useStore = create<AppState>()(
              overlaps = true;
            }
         }
-        
+
         if (overlaps) {
-          return { ...t, assignedTo: delegateId, originalAssignedTo: state.currentUser?.id };
+          const newAssignedTo = t.assignedTo.map(id => id === state.currentUser?.id ? delegateId : id);
+          return { ...t, assignedTo: Array.from(new Set(newAssignedTo)), originalAssignedTo: t.assignedTo };
         }
       }
       return t;
-    })
-  })),
+    })  })),
 
   deactivateVacationMode: () => set((state) => ({
     vacationMode: false,
@@ -701,8 +779,8 @@ export const useStore = create<AppState>()(
     vacationStartDate: null,
     vacationEndDate: null,
     tasks: state.tasks.map(t => {
-      if (!t.completed && t.originalAssignedTo === state.currentUser?.id && t.assignedTo === state.vacationDelegateId) {
-        return { ...t, assignedTo: state.currentUser?.id, originalAssignedTo: null };
+      if (!t.completed && t.originalAssignedTo && t.originalAssignedTo.includes(state.currentUser?.id || '') && t.assignedTo && t.assignedTo.includes(state.vacationDelegateId || '')) {
+        return { ...t, assignedTo: t.originalAssignedTo, originalAssignedTo: [] };
       }
       return t;
     })

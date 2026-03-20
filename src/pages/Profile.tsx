@@ -11,7 +11,7 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dataInputRef = useRef<HTMLInputElement>(null);
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isAddingFamily, setIsAddingFamily] = useState(false);
@@ -552,16 +552,26 @@ export default function Profile() {
                     </div>
                   </div>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!pushNotifications) {
-                        Notification.requestPermission().then(permission => {
+                        try {
+                          const permission = await Notification.requestPermission();
                           if (permission === 'granted') {
                             setPushNotifications(true);
-                            new Notification("Moestuin JTHV", { body: "Notificaties zijn succesvol ingeschakeld!" });
+                            if ('serviceWorker' in navigator) {
+                              navigator.serviceWorker.ready.then(registration => {
+                                registration.showNotification("Moestuin", { body: "Notificaties zijn succesvol ingeschakeld!", icon: "/logo.png" });
+                              }).catch(() => new Notification("Moestuin", { body: "Notificaties zijn succesvol ingeschakeld!", icon: "/logo.png" }));
+                            } else {
+                              new Notification("Moestuin", { body: "Notificaties zijn succesvol ingeschakeld!", icon: "/logo.png" });
+                            }
                           } else {
                             alert("Je moet notificaties toestaan in je browser instellingen.");
                           }
-                        });
+                        } catch (e) {
+                           console.error('Failed to request notification permission', e);
+                           alert("Je browser ondersteunt deze notificaties niet of ze zijn geblokkeerd.");
+                        }
                       } else {
                         setPushNotifications(false);
                       }

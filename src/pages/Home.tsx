@@ -34,7 +34,7 @@ export default function Home() {
   const [layoutError, setLayoutError] = useState<string | null>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   
-  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo === currentUser?.id)).length;
+  const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
   const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
@@ -137,10 +137,10 @@ export default function Home() {
         userId: currentUser?.id || null
       });
       const updates = {
-        plantId: null,
-        plantedDate: null,
-        plantedBy: null,
-        plantType: null,
+        plantId: "",
+        plantedDate: "",
+        plantedBy: "",
+        plantType: "" as any,
       };
       setGridCell(selectedCell.id, updates);
       setSelectedCell({ ...selectedCell, ...updates });
@@ -183,10 +183,10 @@ export default function Home() {
         userId: currentUser?.id || null
       });
       const updates = {
-        plantId: null,
-        plantedDate: null,
-        plantedBy: null,
-        plantType: null,
+        plantId: "",
+        plantedDate: "",
+        plantedBy: "",
+        plantType: "" as any,
       };
       setGridCell(selectedCell.id, updates);
       setIsHarvestModalOpen(false);

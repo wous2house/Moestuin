@@ -64,7 +64,7 @@ export default function AddPlant() {
         plantId: selectedPlantId,
         plantType: selectedType,
         plantedDate: plantedDate,
-        plantedBy: currentUser?.id || null,
+        plantedBy: currentUser?.id || "",
         sunExposure: sunExposure,
         customDaysToHarvest: customDaysToHarvest
       });
