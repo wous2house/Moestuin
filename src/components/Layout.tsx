@@ -7,7 +7,7 @@ import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
-  const { currentUser, tasks, logs, grid, users, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
+  const { currentUser, tasks, logs, grid, users, plants, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
   const navigate = useNavigate();
 
   const activeTasks = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))) || [];
@@ -185,6 +185,23 @@ export default function Layout() {
                       const logUser = getUser(log.userId);
                       const relatedCell = grid.find(c => c.id === log.cellId);
                       const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
+
+                      let actionText = `${logUser?.name} heeft actie '${log.type}' uitgevoerd`;
+                      if (log.type === 'Planten') {
+                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
+                         actionText = `${logUser?.name} heeft ${plantName} op ${cellName} geplant`;
+                      } else if (log.type === 'Oogst') {
+                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
+                         actionText = `${logUser?.name} heeft ${plantName} geoogst van ${cellName}`;
+                      } else if (log.type === 'Wateren') {
+                         actionText = `${logUser?.name} heeft ${cellName} water gegeven`;
+                      } else if (log.type === 'Verwijderd') {
+                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
+                         actionText = `${logUser?.name} heeft ${plantName} verwijderd van ${cellName}`;
+                      } else if (log.type === 'Notitie') {
+                         actionText = `${logUser?.name} heeft een notitie toegevoegd aan ${cellName}`;
+                      }
+
                       return (
                         <button 
                           key={log.id} 
@@ -204,8 +221,8 @@ export default function Layout() {
                             </div>
                           )}
                           <div className="flex-1">
-                            <p className="text-xs font-bold text-[#1A2E1A]">{logUser?.name} heeft actie '{log.type}' uitgevoerd</p>
-                            <p className="text-[10px] text-stone-500">In vak {cellName} • {isValid(new Date(log.date)) ? format(new Date(log.date), 'd MMM HH:mm', { locale: nl }) : 'Onbekend'}</p>
+                            <p className="text-xs font-bold text-[#1A2E1A]">{actionText}</p>
+                            <p className="text-[10px] text-stone-500">{isValid(new Date(log.date)) ? format(new Date(log.date), 'd MMM HH:mm', { locale: nl }) : 'Onbekend'}</p>
                           </div>
                           <button 
                             type="button"

@@ -378,8 +378,24 @@ export const useStore = create<AppState>()(
               }
               else if (coll === 'logs' && action === 'create') {
                  if (record.userId && record.userId !== state.currentUser?.id) {
-                    if (record.type === 'Planten') body = `Er is een nieuw gewas geplant.`;
-                    // Removed redundant harvest log since we already listen to 'harvests' collection
+                    const logUser = state.users.find(u => u.id === record.userId);
+                    const userName = logUser?.name || 'Iemand';
+
+                    const relatedCell = state.grid.find(c => c.id === record.cellId);
+                    const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : 'een vak';
+
+                    if (record.type === 'Planten') {
+                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
+                       body = `${userName} heeft ${plantName} op ${cellName} geplant!`;
+                    } else if (record.type === 'Oogst') {
+                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
+                       body = `${userName} heeft ${plantName} geoogst van ${cellName}!`;
+                    } else if (record.type === 'Wateren') {
+                       body = `${userName} heeft ${cellName} water gegeven.`;
+                    } else if (record.type === 'Verwijderd') {
+                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
+                       body = `${userName} heeft ${plantName} verwijderd van ${cellName}.`;
+                    }
                  }
               }
 
@@ -388,6 +404,11 @@ export const useStore = create<AppState>()(
                 const lastNotif = sessionStorage.getItem('last_notif_body');
                 if (lastNotif !== body) {
                   const showNotif = () => {
+                    if (!('Notification' in window)) {
+                       console.warn('Dit apparaat ondersteunt geen push notificaties.');
+                       return;
+                    }
+
                     if ('serviceWorker' in navigator) {
                       navigator.serviceWorker.ready.then(registration => {
                         registration.showNotification(title, { body, icon: '/logo.png' });
