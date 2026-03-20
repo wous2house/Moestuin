@@ -16,7 +16,7 @@ export async function generatePlantData(plantName: string): Promise<any> {
   "daysToHarvest": 60,
   "waterNeeds": "Een van: Laag, Gemiddeld, Hoog",
   "icon": "Eén emoji die specifiek dit gewas voorstelt (kies de meest unieke/passende emoji, vermijd algemene blaadjes tenzij onvermijdelijk)",
-  "englishSearchTerm": "De exacte Engelse vertaling/titel van het Engelse Wikipedia artikel voor deze plant (bijv. 'Tomato', 'Lettuce', 'Strawberry')"
+  "englishSearchTerm": "De Engelse titel van het Wikipedia artikel voor deze plant, of beter nog: de vrucht/oogst zelf. Gebruik bij voorkeur het meervoud (bijv. 'Tomatoes', 'Strawberries') zodat de foto meerdere exemplaren toont."
 }`,
     });
     const text = response.text || "{}";
@@ -28,10 +28,19 @@ export async function generatePlantData(plantName: string): Promise<any> {
         const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(data.englishSearchTerm)}`);
         if (wikiRes.ok) {
           const wikiData = await wikiRes.json();
-          if (wikiData.thumbnail && wikiData.thumbnail.source) {
-            data.imageUrl = wikiData.thumbnail.source.replace(/\/\d+px-/, '/800px-'); // Try to get a larger thumbnail if possible, or just use what we get
-          } else if (wikiData.originalimage && wikiData.originalimage.source) {
+          if (wikiData.originalimage && wikiData.originalimage.source) {
             data.imageUrl = wikiData.originalimage.source;
+          } else if (wikiData.thumbnail && wikiData.thumbnail.source) {
+            let url = wikiData.thumbnail.source;
+            // Wikipedia thumbnail URLs look like: .../thumb/a/ab/Filename.jpg/xxxpx-Filename.jpg
+            // To get the original: remove /thumb/ and remove the last segment
+            if (url.includes('/thumb/')) {
+              url = url.replace('/thumb/', '/');
+              const parts = url.split('/');
+              parts.pop(); // Remove the "xxxpx-Filename.jpg" part
+              url = parts.join('/');
+            }
+            data.imageUrl = url;
           }
         }
       } catch (e) {
