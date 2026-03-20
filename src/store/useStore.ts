@@ -368,7 +368,9 @@ export const useStore = create<AppState>()(
                  const existingCell = state.grid.find(c => c.id === record.id);
                  if (record.plantId && record.plantedBy && record.plantedBy !== state.currentUser?.id && !existingCell?.plantId) {
                     const plant = state.plants.find(p => p.id === record.plantId);
-                    if (plant) body = `Iemand heeft ${plant.name} geplant!`;
+                    const planter = state.users.find(u => u.id === record.plantedBy);
+                    const planterName = planter?.name || 'Iemand';
+                    if (plant) body = `${planterName} heeft ${plant.name} geplant!`;
                  }
               }
               else if (coll === 'harvests' && action === 'create') {

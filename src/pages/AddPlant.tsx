@@ -13,7 +13,7 @@ export default function AddPlant() {
   const [searchParams] = useSearchParams();
   const initialCell = searchParams.get('cell');
 
-  const { plants, grid, setGridCell, currentUser, addLog } = useStore();
+  const { plants, grid, setGridCell, currentUser, addLog, seedBox, updateSeed, deleteSeed } = useStore();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
@@ -21,6 +21,7 @@ export default function AddPlant() {
   const [selectedCellId, setSelectedCellId] = useState<string | null>(initialCell || null);
   const [sunExposure, setSunExposure] = useState<SunPreference>('Zon');
   const [isSaving, setIsSaving] = useState(false);
+  const [seedsUsed, setSeedsUsed] = useState<number | ''>('');
 
   // If initialCell is provided but invalid (e.g. already occupied), deselect it
   useEffect(() => {
@@ -69,13 +70,25 @@ export default function AddPlant() {
         customDaysToHarvest: customDaysToHarvest
       });
 
+      if (selectedType === 'Zaad' && typeof seedsUsed === 'number' && seedsUsed > 0) {
+        const seedRecord = seedBox.find(s => s.plantId === selectedPlantId);
+        if (seedRecord && seedRecord.id) {
+           const newQuantity = seedRecord.quantity - seedsUsed;
+           if (newQuantity <= 0) {
+              deleteSeed(seedRecord.id);
+           } else {
+              updateSeed(seedRecord.id, { quantity: newQuantity });
+           }
+        }
+      }
+
       addLog({
         cellId: selectedCellId,
-        plantId: selectedPlantId,
+        plantId: selectedPlantId || "",
         date: new Date().toISOString(),
         type: 'Planten',
         note: `Geplant als ${selectedType} in ${sunExposure}`,
-        userId: currentUser?.id || null
+        userId: currentUser?.id || ""
       });
 
       setIsSaving(false);
@@ -198,6 +211,40 @@ export default function AddPlant() {
                   </button>
                 ))}
               </div>
+
+              {selectedType === 'Zaad' && selectedPlantId && seedBox.find(s => s.plantId === selectedPlantId) && (
+                <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mt-4 animate-in fade-in slide-in-from-top-2">
+                  <label className="text-sm font-bold text-amber-800 block mb-2">Hoeveel zaden gebruik je?</label>
+                  <p className="text-xs text-amber-700 mb-3">
+                    Je hebt <strong>{seedBox.find(s => s.plantId === selectedPlantId)?.quantity} {seedBox.find(s => s.plantId === selectedPlantId)?.unit}</strong> beschikbaar in je zadenbox.
+                  </p>
+                  <div className="flex space-x-2">
+                    <input 
+                      type="number" 
+                      min="1"
+                      max={seedBox.find(s => s.plantId === selectedPlantId)?.quantity}
+                      value={seedsUsed}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        const max = seedBox.find(s => s.plantId === selectedPlantId)?.quantity || 0;
+                        if (!isNaN(val)) {
+                           setSeedsUsed(val > max ? max : val);
+                        } else {
+                           setSeedsUsed('');
+                        }
+                      }}
+                      className="flex-1 bg-white border border-amber-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 font-bold text-amber-900"
+                      placeholder="Aantal"
+                    />
+                    <button
+                      onClick={() => setSeedsUsed(seedBox.find(s => s.plantId === selectedPlantId)?.quantity || '')}
+                      className="px-4 py-2 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors"
+                    >
+                      Alles
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           </div>
 

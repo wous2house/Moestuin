@@ -15,7 +15,7 @@ export async function generatePlantData(plantName: string): Promise<any> {
   "sunPreference": "Een van: Zon, Halfschaduw, Schaduw, Duisternis",
   "daysToHarvest": 60,
   "waterNeeds": "Een van: Laag, Gemiddeld, Hoog",
-  "icon": "Eén emoji die specifiek dit gewas voorstelt (kies de meest unieke/passende emoji, vermijd algemene blaadjes tenzij onvermijdelijk)",
+  "icon": "UITSLUITEND 1 standaard Unicode emoji (GEEN tekst of woorden). Gebruik de dichtstbijzijnde visuele match als de exacte emoji niet bestaat (bijv. 🍠 voor biet, 🥬 voor sla/kool, 🧅 voor prei).",
   "englishSearchTerm": "De Engelse titel van het Wikipedia artikel voor deze plant, of beter nog: de vrucht/oogst zelf. Gebruik bij voorkeur het meervoud (bijv. 'Tomatoes', 'Strawberries') zodat de foto meerdere exemplaren toont."
 }`,
     });
