@@ -156,15 +156,15 @@ export default function PlantIndex() {
           <div className="bg-white rounded-[2rem] p-6 w-full max-w-md shadow-xl flex flex-col max-h-[90vh]">
             <h2 className="text-xl font-bold text-[#1A2E1A] mb-4">{editingPlantId ? 'Gewas Bewerken' : 'Nieuw Gewas Toevoegen'}</h2>
             
-            <div className="space-y-4 flex-1 overflow-y-auto pr-2 no-scrollbar">
+            <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar">
               {!editingPlantId && (
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-2">Wat wil je toevoegen?</label>
-                  <div className="flex space-x-2">
+                  <div className="space-x-2">
                     <input 
                       type="text" 
                       placeholder="Bijv. Aardbei, Courgette..." 
-                      className="flex-1 bg-[#F5F7F4] border-none rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none font-bold text-[#1A2E1A]"
+                      className="w-full flex-1 bg-[#F5F7F4] border-none rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-[#5A8F5A] focus:outline-none font-bold text-[#1A2E1A]"
                       value={newPlantInput}
                       onChange={(e) => setNewPlantInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
@@ -172,14 +172,14 @@ export default function PlantIndex() {
                     <button 
                       onClick={handleGenerate}
                       disabled={isGenerating || !newPlantInput.trim()}
-                      className="bg-amber-500 text-white px-4 rounded-xl font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[5rem]"
+                      className="mt-3 p-3 w-full bg-amber-500 text-white px-4 rounded-xl font-bold hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center min-w-[5rem]"
                     >
                       {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Genereer'}
                     </button>
                   </div>
-                  <p className="text-[10px] text-stone-400 mt-2 flex items-center">
+                  {/*<p className="text-[10px] text-stone-400 mt-2 flex items-center">
                     <span className="mr-1">✨</span> AI zoekt automatisch de eigenschappen op
-                  </p>
+                  </p>*/}
                 </div>
               )}
 

@@ -186,18 +186,22 @@ export default function Layout() {
                       const relatedCell = grid.find(c => c.id === log.cellId);
                       const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
 
+                      const getPlantName = (id: any) => {
+                        if (!id) return 'iets';
+                        const searchId = Array.isArray(id) ? id[0] : id;
+                        const plant = plants.find(p => p.id === searchId);
+                        return plant?.name || 'iets';
+                      };
+
                       let actionText = `${logUser?.name} heeft actie '${log.type}' uitgevoerd`;
                       if (log.type === 'Planten') {
-                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
-                         actionText = `${logUser?.name} heeft ${plantName} op ${cellName} geplant`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} op ${cellName} geplant`;
                       } else if (log.type === 'Oogst') {
-                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
-                         actionText = `${logUser?.name} heeft ${plantName} geoogst van ${cellName}`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} geoogst van ${cellName}`;
                       } else if (log.type === 'Wateren') {
                          actionText = `${logUser?.name} heeft ${cellName} water gegeven`;
                       } else if (log.type === 'Verwijderd') {
-                         const plantName = plants.find(p => p.id === log.plantId)?.name || 'iets';
-                         actionText = `${logUser?.name} heeft ${plantName} verwijderd van ${cellName}`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} verwijderd van ${cellName}`;
                       } else if (log.type === 'Notitie') {
                          actionText = `${logUser?.name} heeft een notitie toegevoegd aan ${cellName}`;
                       }

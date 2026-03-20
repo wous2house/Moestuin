@@ -41,6 +41,9 @@
   .mb-0 {
     margin-bottom: 0px;
   }
+  input:focus, textarea:focus, select:focus {
+    --tw-ring-shadow: none!important;
+  }
 }
 
 @layer utilities {

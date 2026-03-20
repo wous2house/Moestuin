@@ -354,6 +354,20 @@ export const useStore = create<AppState>()(
             const title = 'Moestuin Update';
             let body = '';
             
+            const getPlantName = (id: any) => {
+              if (!id) return 'iets';
+              const searchId = Array.isArray(id) ? id[0] : id;
+              const plant = state.plants.find(p => p.id === searchId);
+              return plant?.name || 'iets';
+            };
+
+            const getUserName = (id: any) => {
+              if (!id) return 'Iemand';
+              const searchId = Array.isArray(id) ? id[0] : id;
+              const user = state.users.find(u => u.id === searchId);
+              return user?.name || 'Iemand';
+            };
+
             try {
               if (coll === 'tasks' && (action === 'create' || action === 'update')) {
                  const existingTask = state.tasks.find(t => t.id === record.id);
@@ -367,36 +381,28 @@ export const useStore = create<AppState>()(
               else if (coll === 'grid' && action === 'update') {
                  const existingCell = state.grid.find(c => c.id === record.id);
                  if (record.plantId && record.plantedBy && record.plantedBy !== state.currentUser?.id && !existingCell?.plantId) {
-                    const plant = state.plants.find(p => p.id === record.plantId);
-                    const planter = state.users.find(u => u.id === record.plantedBy);
-                    const planterName = planter?.name || 'Iemand';
-                    if (plant) body = `${planterName} heeft ${plant.name} geplant!`;
+                    body = `${getUserName(record.plantedBy)} heeft ${getPlantName(record.plantId)} geplant!`;
                  }
               }
               else if (coll === 'harvests' && action === 'create') {
                  if (record.userId && record.userId !== state.currentUser?.id) {
-                    body = `Nieuwe oogst geregistreerd: ${record.yieldQuantity} ${record.yieldUnit} ${record.plantName}`;
+                    body = `${getUserName(record.userId)} heeft ${record.yieldQuantity} ${record.yieldUnit} ${record.plantName} geoogst!`;
                  }
               }
               else if (coll === 'logs' && action === 'create') {
                  if (record.userId && record.userId !== state.currentUser?.id) {
-                    const logUser = state.users.find(u => u.id === record.userId);
-                    const userName = logUser?.name || 'Iemand';
-
+                    const userName = getUserName(record.userId);
                     const relatedCell = state.grid.find(c => c.id === record.cellId);
                     const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : 'een vak';
 
                     if (record.type === 'Planten') {
-                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
-                       body = `${userName} heeft ${plantName} op ${cellName} geplant!`;
+                       body = `${userName} heeft ${getPlantName(record.plantId)} op ${cellName} geplant!`;
                     } else if (record.type === 'Oogst') {
-                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
-                       body = `${userName} heeft ${plantName} geoogst van ${cellName}!`;
+                       body = `${userName} heeft ${getPlantName(record.plantId)} geoogst van ${cellName}!`;
                     } else if (record.type === 'Wateren') {
                        body = `${userName} heeft ${cellName} water gegeven.`;
                     } else if (record.type === 'Verwijderd') {
-                       const plantName = state.plants.find(p => p.id === record.plantId)?.name || 'iets';
-                       body = `${userName} heeft ${plantName} verwijderd van ${cellName}.`;
+                       body = `${userName} heeft ${getPlantName(record.plantId)} verwijderd van ${cellName}.`;
                     }
                  }
               }
