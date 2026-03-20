@@ -264,7 +264,7 @@ export default function Tasks() {
       </div>
 
       {/* Fixed Bottom Action (Mobile Only) */}
-      <div className="md:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[60]">
+      <div className="md:hidden fixed bottom-[calc(12px+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[60]">
         <button
           onClick={() => {
             setEditingTaskId(null);
