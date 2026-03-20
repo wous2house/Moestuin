@@ -228,7 +228,7 @@ export const useStore = create<AppState>()(
 
       const mappedPlants = plants.map((p: any) => ({
         ...p,
-        imageUrl: p.imageUrl ? pb.files.getUrl(p, p.imageUrl) : undefined
+        imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getUrl(p, p.imageUrl)) : undefined
       }));
 
       const mappedLogs = logs.map((l: any) => ({
