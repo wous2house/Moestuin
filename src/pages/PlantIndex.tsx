@@ -583,7 +583,7 @@ export default function PlantIndex() {
       </div>
 
       {/* Fixed Bottom Action (Mobile Only) */}
-      <div className="md:hidden fixed bottom-5 mb-15px left-1/2 -translate-x-1/2 z-[60]">
+      <div className="md:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[60]">
         <button
           onClick={() => setIsAddingModalOpen(true)}
           className="bg-[#5A8F5A] text-white p-4 rounded-2xl shadow-lg shadow-[#5A8F5A]/40 hover:bg-[#4A7A4A] transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
