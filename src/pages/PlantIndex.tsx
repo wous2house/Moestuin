@@ -39,6 +39,16 @@ export default function PlantIndex() {
     const data = await generatePlantData(newPlantInput);
     if (data) {
       setGeneratedPlantData(data);
+    } else {
+      // Fallback for missing API Key or failed AI response
+      setGeneratedPlantData({
+        name: newPlantInput,
+        family: 'Overig',
+        sunPreference: 'Zon',
+        daysToHarvest: 60,
+        waterNeeds: 'Gemiddeld',
+        icon: '🌱',
+      });
     }
     setIsGenerating(false);
   };
@@ -70,7 +80,7 @@ export default function PlantIndex() {
           goodNeighbors: [],
           badNeighbors: [],
           sunPreference: (generatedPlantData.sunPreference as SunPreference) || 'Zon',
-          daysToHarvest: generatedPlantData.daysToHarvest || 60,
+          daysToHarvest: parseInt(String(generatedPlantData.daysToHarvest)) || 60,
           waterNeeds: generatedPlantData.waterNeeds || 'Gemiddeld',
           icon: generatedPlantData.icon || '🌱',
           imageUrl: generatedPlantData.imageUrl,

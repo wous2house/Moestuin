@@ -477,18 +477,46 @@ export const useStore = create<AppState>()(
   },
 
   setGridCell: async (cellId, updates) => {
+    // 1. Optimistic Update FIRST to ensure UI updates immediately
+    set((state) => ({
+      grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
+    }));
+
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('grid').update(cellId, updates);
-      set((state) => ({
-        grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
-      }));
-    } catch (e) {
-      console.error("Failed to update grid cell in PB", e);
-      // Optimistic update
-      set((state) => ({
-        grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
-      }));
+      const pbUpdates: any = { ...updates };
+
+      // Only sanitize keys that are actually present in the updates object (Partial update)
+      if ('plantId' in pbUpdates) {
+        if (Array.isArray(pbUpdates.plantId)) pbUpdates.plantId = pbUpdates.plantId[0] || "";
+        if (pbUpdates.plantId === null) pbUpdates.plantId = "";
+      }
+
+      if ('plantedBy' in pbUpdates) {
+        if (Array.isArray(pbUpdates.plantedBy)) pbUpdates.plantedBy = pbUpdates.plantedBy[0] || "";
+        if (pbUpdates.plantedBy === null) pbUpdates.plantedBy = "";
+      }
+
+      if ('plantedDate' in pbUpdates && pbUpdates.plantedDate === null) {
+        pbUpdates.plantedDate = "";
+      }
+
+      if ('plantType' in pbUpdates && pbUpdates.plantType === null) {
+        pbUpdates.plantType = "";
+      }
+
+      if ('customDaysToHarvest' in pbUpdates) {
+        if (pbUpdates.customDaysToHarvest === null) pbUpdates.customDaysToHarvest = "";
+        else if (typeof pbUpdates.customDaysToHarvest === 'number') {
+          pbUpdates.customDaysToHarvest = Math.round(pbUpdates.customDaysToHarvest);
+        }
+      }
+
+      await pb.collection('grid').update(cellId, pbUpdates);
+    } catch (e: any) {
+      console.error("Failed to update grid cell in PB", e?.response || e);
+      // If needed, we could revert the optimistic update here,
+      // but fetchDataFromDB via real-time subscription usually handles sync.
     }
   },
 

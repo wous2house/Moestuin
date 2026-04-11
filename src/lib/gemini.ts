@@ -1,8 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let ai: GoogleGenAI | null = null;
+
+try {
+  // Try to initialize only if the API key is present or bypass the strict check
+  const apiKey = process.env.GEMINI_API_KEY || 'MISSING_API_KEY';
+  ai = new GoogleGenAI({ apiKey });
+} catch (e) {
+  console.warn("Failed to initialize GoogleGenAI. AI features will be unavailable.", e);
+}
 
 export async function generatePlantData(plantName: string): Promise<any> {
+  if (!ai || process.env.GEMINI_API_KEY === undefined) {
+    console.warn("GEMINI_API_KEY is not set. Skipping AI plant data generation.");
+    return null;
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -56,6 +69,11 @@ export async function generatePlantData(plantName: string): Promise<any> {
 }
 
 export async function calculateHarvestDate(plantName: string, plantType: string, sunPreference: string, dateStr: string): Promise<{ expectedHarvestDays: number, reason: string } | null> {
+  if (!ai || process.env.GEMINI_API_KEY === undefined) {
+    console.warn("GEMINI_API_KEY is not set. Skipping AI harvest date calculation.");
+    return null;
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -82,6 +100,11 @@ Geef een JSON object terug met EXACT deze structuur (geen markdown blokken of ex
 }
 
 export async function analyzePlantDisease(imageBase64: string, mimeType: string): Promise<string> {
+  if (!ai || process.env.GEMINI_API_KEY === undefined) {
+    console.warn("GEMINI_API_KEY is not set. Skipping AI plant disease analysis.");
+    return "De AI functionaliteit is momenteel niet beschikbaar (ontbrekende API sleutel).";
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -107,6 +130,11 @@ export async function analyzePlantDisease(imageBase64: string, mimeType: string)
 }
 
 export async function generateRecipe(ingredients: string[]): Promise<string> {
+  if (!ai || process.env.GEMINI_API_KEY === undefined) {
+    console.warn("GEMINI_API_KEY is not set. Skipping AI recipe generation.");
+    return "De AI functionaliteit is momenteel niet beschikbaar (ontbrekende API sleutel).";
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
