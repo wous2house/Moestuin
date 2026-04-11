@@ -479,7 +479,20 @@ export const useStore = create<AppState>()(
   setGridCell: async (cellId, updates) => {
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('grid').update(cellId, updates);
+
+      // Sanitize updates for PocketBase
+      const pbUpdates: any = { ...updates };
+      if (pbUpdates.plantId === null) pbUpdates.plantId = "";
+      else if (Array.isArray(pbUpdates.plantId)) pbUpdates.plantId = pbUpdates.plantId[0];
+
+      if (pbUpdates.plantedBy === null) pbUpdates.plantedBy = "";
+      else if (Array.isArray(pbUpdates.plantedBy)) pbUpdates.plantedBy = pbUpdates.plantedBy[0];
+
+      if (pbUpdates.plantedDate === null) pbUpdates.plantedDate = "";
+      if (pbUpdates.plantType === null) pbUpdates.plantType = "";
+      if (pbUpdates.customDaysToHarvest === null) pbUpdates.customDaysToHarvest = "";
+
+      await pb.collection('grid').update(cellId, pbUpdates);
       set((state) => ({
         grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
       }));

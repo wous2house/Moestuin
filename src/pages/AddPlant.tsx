@@ -84,13 +84,15 @@ export default function AddPlant() {
         customDaysToHarvest: customDaysToHarvest
       });
 
+      const finalCustomDaysToHarvest = customDaysToHarvest ? Math.round(customDaysToHarvest) : null;
+
       await setGridCell(selectedCellId, {
         plantId: selectedPlantId,
         plantType: selectedType,
         plantedDate: plantedDate,
         plantedBy: currentUser?.id || null,
         sunExposure: sunExposure,
-        customDaysToHarvest: customDaysToHarvest
+        customDaysToHarvest: finalCustomDaysToHarvest
       });
 
       if (selectedType === 'Zaad' && typeof seedsUsed === 'number' && seedsUsed > 0) {
