@@ -70,8 +70,14 @@ export default function Harvests() {
     );
   }, [fullyDistributedHarvests, filterUserFamily]);
 
-  const getUser = (id: string | null) => users.find(u => u.id === id);
-  const getPlant = (id: string | null) => plants.find(p => p.id === id);
+  const getUser = (id: string | null | string[]) => {
+    const searchId = Array.isArray(id) ? id[0] : id;
+    return users.find(u => u.id === searchId);
+  };
+  const getPlant = (id: string | null | string[]) => {
+    const searchId = Array.isArray(id) ? id[0] : id;
+    return plants.find(p => p.id === searchId);
+  };
 
   const handleOpenEdit = (e: React.MouseEvent, harvest: HarvestRecord) => {
     e.stopPropagation();

@@ -52,8 +52,14 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null);
 
-  const getPlant = (id: string | null) => plants.find(p => p.id === id);
-  const getUser = (id: string | null) => users.find(u => u.id === id);
+  const getPlant = (id: string | null | string[]) => {
+    const searchId = Array.isArray(id) ? id[0] : id;
+    return plants.find(p => p.id === searchId);
+  };
+  const getUser = (id: string | null | string[]) => {
+    const searchId = Array.isArray(id) ? id[0] : id;
+    return users.find(u => u.id === searchId);
+  };
 
   const selectedPlant = getPlant(selectedCell?.plantId || null);
   
@@ -137,10 +143,10 @@ export default function Home() {
         userId: currentUser?.id || null
       });
       const updates = {
-        plantId: "",
-        plantedDate: "",
-        plantedBy: "",
-        plantType: "" as any,
+        plantId: null,
+        plantedDate: null,
+        plantedBy: null,
+        plantType: null,
       };
       setGridCell(selectedCell.id, updates);
       setSelectedCell({ ...selectedCell, ...updates });
@@ -183,10 +189,10 @@ export default function Home() {
         userId: currentUser?.id || null
       });
       const updates = {
-        plantId: "",
-        plantedDate: "",
-        plantedBy: "",
-        plantType: "" as any,
+        plantId: null,
+        plantedDate: null,
+        plantedBy: null,
+        plantType: null,
       };
       setGridCell(selectedCell.id, updates);
       setIsHarvestModalOpen(false);
@@ -554,7 +560,7 @@ export default function Home() {
               </div>
             </>
             ) : (
-            <div className="py-4">
+            <div className="py-4 space-y-3">
               <div className="text-center py-4">
                 <p className="text-stone-500 mb-6 font-medium">Dit vak is nog leeg.</p>
                 <Link
@@ -564,6 +570,16 @@ export default function Home() {
                   <Plus className="w-5 h-5" />
                   <span>Plant Toevoegen</span>
                 </Link>
+                
+                {(selectedCell.plantType || selectedCell.plantedDate || selectedCell.plantId) && (
+                  <button
+                    onClick={handleRemovePlant}
+                    className="mt-4 text-xs font-bold text-red-500 hover:text-red-700 transition-colors py-2 px-4 rounded-xl border border-red-100 hover:bg-red-50 flex items-center justify-center space-x-1 mx-auto"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Vak Resetten / Leegmaken</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

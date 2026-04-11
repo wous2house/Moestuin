@@ -148,6 +148,7 @@ interface AppState {
   deleteUser: (id: string) => Promise<void>;
   importData: (data: Partial<AppState>) => void;
   initializeFromDB: () => Promise<void>;
+  fetchDataFromDB: () => Promise<void>;
 }
 
 const processImage = async (dataUrl: string) => {
@@ -190,25 +191,10 @@ export const useStore = create<AppState>()(
   isNotificationsModalOpen: false,
   dismissedLogs: {},
 
-  initializeFromDB: async () => {
+  fetchDataFromDB: async () => {
     try {
       const { pb } = await import('../lib/pb');
-
-      if (!pb.authStore.isValid && get().currentUser) {
-        console.warn('PocketBase auth token is invalid or expired. Logging out.');
-        get().logout();
-        return;
-      }
-
-      // Unsubscribe from everything before re-subscribing
-      pb.collection('plants').unsubscribe();
-      pb.collection('grid').unsubscribe();
-      pb.collection('tasks').unsubscribe();
-      pb.collection('families').unsubscribe();
-      pb.collection('users').unsubscribe();
-      pb.collection('seedBox').unsubscribe();
-      pb.collection('harvests').unsubscribe();
-      pb.collection('logs').unsubscribe();
+      if (!pb.authStore.isValid) return;
 
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
         pb.collection('plants').getFullList({ requestKey: null }).catch(e => { console.error('plants error', e); return null; }),
@@ -222,51 +208,48 @@ export const useStore = create<AppState>()(
       ]);
 
       if (!plants || !grid || !tasks || !families || !users || !seedBox || !harvests || !logs) {
-        console.error('One or more collections failed to load. Aborting initializeFromDB to prevent data loss.');
+        console.error('One or more collections failed to load. Aborting fetchDataFromDB.');
         return;
       }
 
       const mappedPlants = plants.map((p: any) => ({
         ...p,
-        imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getUrl(p, p.imageUrl)) : undefined
+        imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getURL(p, p.imageUrl)) : undefined
       }));
 
       const mappedLogs = logs.map((l: any) => ({
         ...l,
-        imageUrl: l.imageUrl ? pb.files.getUrl(l, l.imageUrl) : undefined
+        imageUrl: l.imageUrl ? pb.files.getURL(l, l.imageUrl) : undefined
       }));
 
       const mappedHarvests = harvests.map((h: any) => ({
         ...h,
-        imageUrl: h.imageUrl ? pb.files.getUrl(h, h.imageUrl) : undefined
+        imageUrl: h.imageUrl ? pb.files.getURL(h, h.imageUrl) : undefined
       }));
 
-      let fetchedGrid = (grid as any[]).sort((a, b) => {
-        if (a.y !== b.y) return a.y - b.y;
-        return a.x - b.x;
+      const mappedGrid = (grid as any[]).map((c: any) => ({
+        ...c,
+        plantId: Array.isArray(c.plantId) ? c.plantId[0] : (c.plantId || null),
+        plantedBy: Array.isArray(c.plantedBy) ? c.plantedBy[0] : (c.plantedBy || null),
+      })).sort((a, b) => {
+        const dateA = new Date(a.updated).getTime();
+        const dateB = new Date(b.updated).getTime();
+        return dateB - dateA;
       });
 
-      // Deduplicate grid cells to prevent too many rows bug
       const uniqueCells = new Map<string, any>();
       const cellsToDelete: any[] = [];
 
-      for (const cell of fetchedGrid) {
+      for (const cell of mappedGrid) {
         const key = `${cell.x}-${cell.y}`;
         if (uniqueCells.has(key)) {
-          const existing = uniqueCells.get(key);
-          // Prefer keeping cells with plants
-          if (!existing.plantId && cell.plantId) {
-            cellsToDelete.push(existing);
-            uniqueCells.set(key, cell);
-          } else {
-            cellsToDelete.push(cell);
-          }
+          cellsToDelete.push(cell);
         } else {
           uniqueCells.set(key, cell);
         }
       }
 
-      fetchedGrid = Array.from(uniqueCells.values()).sort((a, b) => {
+      let fetchedGrid = Array.from(uniqueCells.values()).sort((a, b) => {
         if (a.y !== b.y) return a.y - b.y;
         return a.x - b.x;
       });
@@ -276,18 +259,12 @@ export const useStore = create<AppState>()(
         Promise.all(cellsToDelete.map(c => pb.collection('grid').delete(c.id).catch(console.error)));
       }
       
-      // Auto-generate a 4x4 grid if completely empty
       if (fetchedGrid.length === 0 && pb.authStore.isValid) {
         try {
-          console.log('Generating initial grid in PocketBase...');
           const newCells = [];
           for (let y = 0; y < 4; y++) {
             for (let x = 0; x < 4; x++) {
-              const cell = {
-                x,
-                y,
-                sunExposure: y < 2 ? 'Zon' : 'Halfschaduw'
-              };
+              const cell = { x, y, sunExposure: y < 2 ? 'Zon' : 'Halfschaduw' };
               const record = await pb.collection('grid').create(cell);
               newCells.push(record);
             }
@@ -304,9 +281,7 @@ export const useStore = create<AppState>()(
       const calculatedWidth = fetchedGrid.length > 0 ? Math.max(...fetchedGrid.map(c => c.x)) + 1 : 4;
       const calculatedHeight = fetchedGrid.length > 0 ? Math.max(...fetchedGrid.map(c => c.y)) + 1 : 4;
 
-      // Auto-repair missing cells due to API glitches or deletions
       if (fetchedGrid.length > 0 && fetchedGrid.length < calculatedWidth * calculatedHeight) {
-        console.log('Repairing missing grid cells in database...');
         try {
           const newCells = [];
           for (let y = 0; y < calculatedHeight; y++) {
@@ -329,114 +304,173 @@ export const useStore = create<AppState>()(
         }
       }
 
+      const mappedTasks = (tasks as any[]).map(t => ({
+        ...t,
+        assignedTo: Array.isArray(t.assignedTo) ? t.assignedTo : [],
+        relatedCellId: Array.isArray(t.relatedCellId) ? t.relatedCellId[0] : (t.relatedCellId || null)
+      }));
+
+      const mappedSeeds = (seedBox as any[]).map(s => ({
+        ...s,
+        plantId: Array.isArray(s.plantId) ? s.plantId[0] : s.plantId
+      }));
+
+      const mappedLogsWithRelations = mappedLogs.map(l => ({
+        ...l,
+        cellId: Array.isArray(l.cellId) ? l.cellId[0] : l.cellId,
+        plantId: Array.isArray(l.plantId) ? l.plantId[0] : (l.plantId || null),
+        userId: Array.isArray(l.userId) ? l.userId[0] : (l.userId || null)
+      }));
+
+      const mappedHarvestsWithRelations = mappedHarvests.map(h => ({
+        ...h,
+        plantId: Array.isArray(h.plantId) ? h.plantId[0] : h.plantId,
+        userId: Array.isArray(h.userId) ? h.userId[0] : (h.userId || null)
+      }));
+
       set({
         plants: mappedPlants,
         grid: fetchedGrid as any,
         gridWidth: calculatedWidth,
         gridHeight: calculatedHeight,
-        tasks: tasks as any,
+        tasks: mappedTasks as any,
         families: families as any,
-        users: users.map((u: any) => ({ id: u.id, name: u.name || u.username || u.email || 'Gebruiker', role: u.role, familyId: u.familyId, avatar: u.avatar ? pb.files.getUrl(u, u.avatar) : undefined })) as any,
-        seedBox: seedBox as any,
-        harvests: mappedHarvests,
-        logs: mappedLogs,
+        users: users.map((u: any) => ({ 
+          id: u.id, 
+          name: u.name || u.username || u.email || 'Gebruiker', 
+          role: u.role, 
+          familyId: Array.isArray(u.familyId) ? u.familyId[0] : (u.familyId || ''), 
+          avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined 
+        })) as any,
+        seedBox: mappedSeeds as any,
+        harvests: mappedHarvestsWithRelations,
+        logs: mappedLogsWithRelations,
       });
+    } catch (e: any) {
+      console.error("Failed to fetch from DB", e?.response || e);
+    }
+  },
 
-      // Subscribe to realtime changes
-      const collections = ['plants', 'grid', 'tasks', 'families', 'users', 'seedBox', 'harvests', 'logs'];
-      collections.forEach(coll => {
-        pb.collection(coll).subscribe('*', async (e) => {
-          const state = get();
-          state.initializeFromDB();
+  initializeFromDB: async () => {
+    try {
+      const { pb } = await import('../lib/pb');
 
-          if (state.pushNotifications && 'Notification' in window && Notification.permission === 'granted') {
-            const { action, record } = e;
-            const title = 'Moestuin Update';
-            let body = '';
-            
-            const getPlantName = (id: any) => {
-              if (!id) return 'iets';
-              const searchId = Array.isArray(id) ? id[0] : id;
-              const plant = state.plants.find(p => p.id === searchId);
-              return plant?.name || 'iets';
-            };
+      if (!pb.authStore.isValid && get().currentUser) {
+        console.warn('PocketBase auth token is invalid or expired. Logging out.');
+        get().logout();
+        return;
+      }
 
-            const getUserName = (id: any) => {
-              if (!id) return 'Iemand';
-              const searchId = Array.isArray(id) ? id[0] : id;
-              const user = state.users.find(u => u.id === searchId);
-              return user?.name || 'Iemand';
-            };
+      // Initial data fetch
+      await get().fetchDataFromDB();
 
-            try {
-              if (coll === 'tasks' && (action === 'create' || action === 'update')) {
-                 const existingTask = state.tasks.find(t => t.id === record.id);
-                 const wasAssigned = existingTask?.assignedTo?.includes(state.currentUser?.id || '');
-                 const isAssigned = record.assignedTo && Array.isArray(record.assignedTo) && record.assignedTo.includes(state.currentUser?.id);
-                 
-                 if (isAssigned && !wasAssigned && !record.completed) {
-                   body = `Nieuwe taak aan jou toegewezen: ${record.title}`;
-                 }
-              }
-              else if (coll === 'grid' && action === 'update') {
-                 const existingCell = state.grid.find(c => c.id === record.id);
-                 if (record.plantId && record.plantedBy && record.plantedBy !== state.currentUser?.id && !existingCell?.plantId) {
-                    body = `${getUserName(record.plantedBy)} heeft ${getPlantName(record.plantId)} geplant!`;
-                 }
-              }
-              else if (coll === 'harvests' && action === 'create') {
-                 if (record.userId && record.userId !== state.currentUser?.id) {
-                    body = `${getUserName(record.userId)} heeft ${record.yieldQuantity} ${record.yieldUnit} ${record.plantName} geoogst!`;
-                 }
-              }
-              else if (coll === 'logs' && action === 'create') {
-                 if (record.userId && record.userId !== state.currentUser?.id) {
-                    const userName = getUserName(record.userId);
-                    const relatedCell = state.grid.find(c => c.id === record.cellId);
-                    const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : 'een vak';
+      // Only subscribe if not already subscribed to prevent multiple listeners and 403s
+      if (!(window as any).__PB_SUBSCRIBED__) {
+        (window as any).__PB_SUBSCRIBED__ = true;
+        
+        const collections = ['plants', 'grid', 'tasks', 'families', 'users', 'seedBox', 'harvests', 'logs'];
+        
+        collections.forEach(coll => {
+          try {
+            pb.collection(coll).subscribe('*', async (e) => {
+              await get().fetchDataFromDB(); // Fetch without touching subscriptions
+              const state = get();
 
-                    if (record.type === 'Planten') {
-                       body = `${userName} heeft ${getPlantName(record.plantId)} op ${cellName} geplant!`;
-                    } else if (record.type === 'Oogst') {
-                       body = `${userName} heeft ${getPlantName(record.plantId)} geoogst van ${cellName}!`;
-                    } else if (record.type === 'Wateren') {
-                       body = `${userName} heeft ${cellName} water gegeven.`;
-                    } else if (record.type === 'Verwijderd') {
-                       body = `${userName} heeft ${getPlantName(record.plantId)} verwijderd van ${cellName}.`;
+              if (state.pushNotifications && 'Notification' in window && Notification.permission === 'granted') {
+                const { action, record } = e;
+                const title = 'Moestuin Update';
+                let body = '';
+                
+                const getPlantName = (id: any, logRecord?: any) => {
+                  if (logRecord && logRecord.note) {
+                    if (logRecord.note.includes(' geplant als')) {
+                      return logRecord.note.split(' geplant als')[0].replace('[', '').replace(']', '').trim();
                     }
-                 }
-              }
-
-              if (body) {
-                // To prevent spamming on rapid updates, check if the same notification was just sent
-                const lastNotif = sessionStorage.getItem('last_notif_body');
-                if (lastNotif !== body) {
-                  const showNotif = () => {
-                    if (!('Notification' in window)) {
-                       console.warn('Dit apparaat ondersteunt geen push notificaties.');
-                       return;
+                    if (logRecord.note.includes(' geoogst van')) {
+                      return logRecord.note.split(' geoogst van')[0].replace('[', '').replace(']', '').trim();
                     }
+                  }
+                  if (id) {
+                    const searchId = Array.isArray(id) ? id[0] : id;
+                    const plant = state.plants.find(p => p.id === searchId);
+                    if (plant) return plant.name;
+                  }
+                  return 'een gewas';
+                };
 
-                    if ('serviceWorker' in navigator) {
-                      navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification(title, { body, icon: '/logo.png' });
-                      }).catch(() => new Notification(title, { body, icon: '/logo.png' }));
-                    } else {
-                      new Notification(title, { body, icon: '/logo.png' });
+                const getUserName = (id: any) => {
+                  if (!id) return 'Iemand';
+                  const searchId = Array.isArray(id) ? id[0] : id;
+                  const user = state.users.find(u => u.id === searchId);
+                  return user?.name || 'Iemand';
+                };
+
+                try {
+                  if (coll === 'tasks' && (action === 'create' || action === 'update')) {
+                     const existingTask = state.tasks.find(t => t.id === record.id);
+                     const wasAssigned = existingTask?.assignedTo?.includes(state.currentUser?.id || '');
+                     const isAssigned = record.assignedTo && Array.isArray(record.assignedTo) && record.assignedTo.includes(state.currentUser?.id);
+                     if (isAssigned && !wasAssigned && !record.completed) {
+                       body = `Nieuwe taak aan jou toegewezen: ${record.title}`;
+                     }
+                  }
+                  else if (coll === 'grid' && action === 'update') {
+                     const existingCell = state.grid.find(c => c.id === record.id);
+                     if (record.plantId && record.plantedBy && record.plantedBy !== state.currentUser?.id && !existingCell?.plantId) {
+                        body = `${getUserName(record.plantedBy)} heeft ${getPlantName(record.plantId)} geplant!`;
+                     }
+                  }
+                  else if (coll === 'harvests' && action === 'create') {
+                     if (record.userId && record.userId !== state.currentUser?.id) {
+                        body = `${getUserName(record.userId)} heeft ${record.yieldQuantity} ${record.yieldUnit} ${record.plantName} geoogst!`;
+                     }
+                  }
+                  else if (coll === 'logs' && action === 'create') {
+                     if (record.userId && record.userId !== state.currentUser?.id) {
+                        const userName = getUserName(record.userId);
+                        const relatedCell = state.grid.find(c => c.id === record.cellId);
+                        const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : 'een vak';
+
+                        if (record.type === 'Planten') {
+                           body = `${userName} heeft ${getPlantName(record.plantId, record)} op ${cellName} geplant!`;
+                        } else if (record.type === 'Oogst') {
+                           body = `${userName} heeft ${getPlantName(record.plantId, record)} geoogst van ${cellName}!`;
+                        } else if (record.type === 'Wateren') {
+                           body = `${userName} heeft ${cellName} water gegeven.`;
+                        } else if (record.type === 'Verwijderd') {
+                           body = `${userName} heeft ${getPlantName(record.plantId, record)} verwijderd van ${cellName}.`;
+                        }
+                     }
+                  }
+
+                  if (body) {
+                    const lastNotif = sessionStorage.getItem('last_notif_body');
+                    if (lastNotif !== body) {
+                      const showNotif = () => {
+                        if (!('Notification' in window)) return;
+                        if ('serviceWorker' in navigator) {
+                          navigator.serviceWorker.ready.then(registration => {
+                            registration.showNotification(title, { body, icon: '/logo.png' });
+                          }).catch(() => new Notification(title, { body, icon: '/logo.png' }));
+                        } else {
+                          new Notification(title, { body, icon: '/logo.png' });
+                        }
+                      };
+                      showNotif();
+                      sessionStorage.setItem('last_notif_body', body);
+                      setTimeout(() => sessionStorage.removeItem('last_notif_body'), 5000);
                     }
-                  };
-                  showNotif();
-                  sessionStorage.setItem('last_notif_body', body);
-                  setTimeout(() => sessionStorage.removeItem('last_notif_body'), 5000);
+                  }
+                } catch (err) {
+                  console.error('Error showing notification', err);
                 }
               }
-            } catch (err) {
-              console.error('Error showing notification', err);
-            }
+            });
+          } catch (subErr) {
+            console.error(`Failed to subscribe to ${coll}`, subErr);
           }
         });
-      });
-
+      }
     } catch (e: any) {
       console.error("Failed to initialize from DB completely", e?.response || e);
     }
@@ -838,7 +872,7 @@ export const useStore = create<AppState>()(
       }
       
       const record = await pb.collection('logs').create(payload);
-      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : log.imageUrl;
+      const finalImageUrl = record.imageUrl ? pb.files.getURL(record, record.imageUrl) : log.imageUrl;
 
       set((state) => ({
         logs: [{ ...log, id: record.id, imageUrl: finalImageUrl } as GrowthLog, ...state.logs]
@@ -884,7 +918,7 @@ export const useStore = create<AppState>()(
       }
 
       const record = await pb.collection('harvests').create(payload);
-      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : harvest.imageUrl;
+      const finalImageUrl = record.imageUrl ? pb.files.getURL(record, record.imageUrl) : harvest.imageUrl;
 
       set((state) => ({
         harvests: [{ ...harvest, id: record.id, imageUrl: finalImageUrl } as HarvestRecord, ...state.harvests]
@@ -917,7 +951,7 @@ export const useStore = create<AppState>()(
       }
 
       const record = await pb.collection('harvests').update(id, payload);
-      const finalImageUrl = record.imageUrl ? pb.files.getUrl(record, record.imageUrl) : updates.imageUrl;
+      const finalImageUrl = record.imageUrl ? pb.files.getURL(record, record.imageUrl) : updates.imageUrl;
 
       set((state) => ({
         harvests: state.harvests.map(h => h.id === id ? { ...h, ...updates, ...(finalImageUrl && { imageUrl: finalImageUrl }) } : h)
@@ -1041,7 +1075,7 @@ export const useStore = create<AppState>()(
           name: user.name || user.username || user.email || 'Gebruiker',
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
-          avatar: user.avatar ? pb.files.getUrl(user, user.avatar) : undefined
+          avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined
         }
       }));
     } catch (e) {
@@ -1098,7 +1132,7 @@ export const useStore = create<AppState>()(
       
       const finalUpdates = { ...updates };
       if (record.avatar && updates.avatar && updates.avatar.startsWith('data:image')) {
-         finalUpdates.avatar = pb.files.getUrl(record, record.avatar);
+         finalUpdates.avatar = pb.files.getURL(record, record.avatar);
       }
 
       set((state) => ({

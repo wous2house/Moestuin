@@ -45,27 +45,50 @@ export default function AddPlant() {
     }
   }, [selectedCellId, grid]);
 
-  const getPlant = (id: string | null) => plants.find(p => p.id === id);
+  const getPlant = (id: string | null | string[]) => {
+    const searchId = Array.isArray(id) ? id[0] : id;
+    return plants.find(p => p.id === searchId);
+  };
 
   const handleSave = async () => {
-    if (selectedPlantId && selectedCellId) {
-      setIsSaving(true);
+    if (!selectedPlantId || !selectedCellId) {
+      console.error("Missing plant or cell ID", { selectedPlantId, selectedCellId });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
       const plant = getPlant(selectedPlantId);
-      const plantedDate = format(new Date(), 'yyyy-MM-dd');
+      const plantedDate = new Date().toISOString();
       
-      let customDaysToHarvest = null;
-      if (plant) {
-        const aiResult = await calculateHarvestDate(plant.name, selectedType, sunExposure, plantedDate);
-        if (aiResult && aiResult.expectedHarvestDays) {
-          customDaysToHarvest = aiResult.expectedHarvestDays;
+      let customDaysToHarvest = plant?.daysToHarvest || 60;
+      
+      try {
+        if (plant) {
+          const aiResult = await calculateHarvestDate(plant.name, selectedType, sunExposure, plantedDate);
+          if (aiResult && typeof aiResult.expectedHarvestDays === 'number') {
+            customDaysToHarvest = aiResult.expectedHarvestDays;
+          }
         }
+      } catch (aiErr) {
+        console.error("Error calculating harvest date with AI, using default", aiErr);
+        // Fallback already set to plant.daysToHarvest
       }
+
+      console.log("Updating grid cell", selectedCellId, {
+        plantId: selectedPlantId,
+        plantType: selectedType,
+        plantedDate: plantedDate,
+        plantedBy: currentUser?.id || "",
+        sunExposure: sunExposure,
+        customDaysToHarvest: customDaysToHarvest
+      });
 
       await setGridCell(selectedCellId, {
         plantId: selectedPlantId,
         plantType: selectedType,
         plantedDate: plantedDate,
-        plantedBy: currentUser?.id || "",
+        plantedBy: currentUser?.id || null,
         sunExposure: sunExposure,
         customDaysToHarvest: customDaysToHarvest
       });
@@ -82,17 +105,23 @@ export default function AddPlant() {
         }
       }
 
-      addLog({
+      const nameToLog = plant ? plant.name : "Gewas";
+
+      await addLog({
         cellId: selectedCellId,
         plantId: selectedPlantId || "",
         date: new Date().toISOString(),
         type: 'Planten',
-        note: `Geplant als ${selectedType} in ${sunExposure}`,
+        note: `${nameToLog} geplant als ${selectedType} in ${sunExposure}`,
         userId: currentUser?.id || ""
       });
 
-      setIsSaving(false);
       navigate('/');
+    } catch (err) {
+      console.error("Failed to save plant", err);
+      alert("Er is een fout opgetreden bij het opslaan van de plant. Probeer het opnieuw.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -104,7 +133,7 @@ export default function AddPlant() {
   );
 
   const displayedPlants = searchTerm.trim() === '' 
-    ? [...plants].reverse().slice(0, 5) 
+    ? [...plants].reverse().slice(0, 10) 
     : filteredPlants;
 
   return (
@@ -255,10 +284,14 @@ export default function AddPlant() {
               {availableCells.length === 0 ? (
                 <p className="text-sm text-amber-600 bg-amber-50 p-4 rounded-xl">De tuin is momenteel vol. Verwijder eerst een plant om ruimte te maken.</p>
               ) : (
-                <div className="grid grid-cols-4 gap-2 md:gap-3">
+                <div 
+                  className="grid gap-2 md:gap-3 bg-[#E6D5B8] p-4 rounded-2xl border-4 border-[#C19A6B]/20"
+                  style={{ gridTemplateColumns: `repeat(${useStore.getState().gridWidth}, minmax(0, 1fr))` }}
+                >
                   {grid.map(cell => {
                     const isAvailable = !cell.plantId || selectedCellId === cell.id;
                     const isSelected = selectedCellId === cell.id;
+                    const plant = plants.find(p => p.id === (Array.isArray(cell.plantId) ? cell.plantId[0] : cell.plantId));
                     
                     return (
                       <button
@@ -266,13 +299,25 @@ export default function AddPlant() {
                         disabled={!isAvailable || isSaving}
                         onClick={() => setSelectedCellId(cell.id)}
                         className={cn(
-                          "aspect-square rounded-xl flex flex-col items-center justify-center transition-all text-xs font-bold",
-                          !isAvailable ? "bg-stone-100 text-stone-300 cursor-not-allowed" :
-                          isSelected ? "bg-[#5A8F5A] text-white shadow-md border border-[#5A8F5A]" : "bg-white border border-stone-200 text-stone-500 hover:border-[#5A8F5A]",
+                          "aspect-square rounded-xl flex flex-col items-center justify-center transition-all text-[10px] font-bold relative",
+                          !isAvailable 
+                            ? "bg-white/50 text-stone-400 cursor-not-allowed border border-stone-200" 
+                            : isSelected 
+                              ? "bg-[#5A8F5A] text-white shadow-md border-2 border-white scale-105 z-10" 
+                              : "bg-white border border-stone-200 text-stone-500 hover:border-[#5A8F5A] hover:bg-stone-50",
                           isSaving && "opacity-50"
                         )}
                       >
-                        {String.fromCharCode(65 + cell.y)}{cell.x + 1}
+                        {plant ? (
+                          <span className="text-lg mb-0.5">{plant.icon}</span>
+                        ) : (
+                          <span className="opacity-40 mb-0.5">🕳️</span>
+                        )}
+                        <span>{String.fromCharCode(65 + cell.y)}{cell.x + 1}</span>
+                        
+                        {!isAvailable && !isSelected && (
+                          <div className="absolute inset-0 bg-stone-100/20 rounded-xl" />
+                        )}
                       </button>
                     );
                   })}

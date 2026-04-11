@@ -478,11 +478,13 @@ export default function PlantIndex() {
                 <div className="mt-4 pt-4 border-t border-stone-100 flex items-start space-x-2 flex-1">
                   <p className="text-xs text-stone-500 leading-relaxed">
                     Goede buren: {plant.goodNeighbors.map(id => {
-                      const p = plants.find(p => p.id === id);
+                      const searchId = Array.isArray(id) ? id[0] : id;
+                      const p = plants.find(p => p.id === searchId);
                       return p ? `${p.icon} ${p.name}` : null;
                     }).filter(Boolean).join(', ') || 'Geen'}.<br/>
                     Slechte buren: {plant.badNeighbors.map(id => {
-                      const p = plants.find(p => p.id === id);
+                      const searchId = Array.isArray(id) ? id[0] : id;
+                      const p = plants.find(p => p.id === searchId);
                       return p ? `${p.icon} ${p.name}` : null;
                     }).filter(Boolean).join(', ') || 'Geen'}.
                   </p>
@@ -493,7 +495,8 @@ export default function PlantIndex() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {seedBox.map(seed => {
-              const plant = plants.find(p => p.id === seed.plantId);
+              const searchId = Array.isArray(seed.plantId) ? seed.plantId[0] : seed.plantId;
+              const plant = plants.find(p => p.id === searchId);
               if (!plant) return null;
               const isEditing = editingSeedId === seed.id;
 

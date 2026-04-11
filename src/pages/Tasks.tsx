@@ -181,7 +181,7 @@ export default function Tasks() {
                   task.completed ? "opacity-60 border-stone-200" : 
                   isOverdue ? "border-red-200 bg-red-50/30" : "border-stone-100"
                 )}
-                onClick={() => setViewingTask(task)}
+                onClick={() => handleEditTask(task)}
               >
                 <button 
                   onClick={(e) => { e.stopPropagation(); toggleTask(task.id); }}
@@ -202,11 +202,6 @@ export default function Tasks() {
                     )}>
                       {task.title}
                     </h3>
-                    <div className="flex items-center space-x-1 shrink-0">
-                      <div className="bg-[#F5F7F4] p-1.5 rounded-lg flex items-center justify-center ml-1">
-                        {relatedPlant ? <span className="text-xl">{relatedPlant.icon}</span> : getIcon(task.type)}
-                      </div>
-                    </div>
                   </div>
                   
                   <p className="text-sm text-stone-500 mt-1 line-clamp-2 flex-1">
@@ -227,32 +222,23 @@ export default function Tasks() {
                     </span>
                     
                     {assignedUsers.length > 0 ? (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); !task.completed && setReassigningTaskId(task.id); }}
-                        disabled={task.completed}
-                        className="flex items-center space-x-1.5 bg-[#F5F7F4] hover:bg-[#E8F0E8] transition-colors px-2 py-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <div className="flex -space-x-1">
-                          {assignedUsers.slice(0, 3).map((u, i) => (
-                            <div key={u.id} className={cn("w-4 h-4 rounded-full border border-white bg-[#E8F0E8] flex items-center justify-center text-[8px] font-bold text-[#5A8F5A] z-10", i > 0 && "-ml-1")}>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          {assignedUsers.map((u) => (
+                            <div key={u.id} title={u.name} className="w-5 h-5 rounded-full border border-stone-100 bg-[#E8F0E8] flex items-center justify-center text-[8px] font-bold text-[#5A8F5A] shrink-0">
                               {u.avatar ? (
-                                <img src={u.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                                <img src={u.avatar} alt={u.name} className="w-full h-full rounded-full object-cover" />
                               ) : (
                                 u.name?.charAt(0) || '?'
                               )}
                             </div>
                           ))}
                         </div>
-                        <span className="text-xs font-bold text-stone-600">{assignedUsers.length === 1 ? assignedUsers[0].name : `${assignedUsers.length} personen`}</span>
-                      </button>
+                      </div>
                     ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); !task.completed && setReassigningTaskId(task.id); }}
-                        disabled={task.completed}
-                        className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-2 py-1 rounded-md hover:bg-[#D0E0D0] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Toewijzen
-                      </button>
+                      <div className="text-[10px] font-bold text-[#5A8F5A] bg-[#E8F0E8] px-2 py-1 rounded-md">
+                        Iedereen
+                      </div>
                     )}
                   </div>
                 </div>
@@ -669,17 +655,52 @@ export default function Tasks() {
               )}
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">Toewijzen Aan</label>
-                <select 
-                  value={newTaskAssignedTo}
-                  onChange={(e) => setNewTaskAssignedTo(e.target.value)}
-                  className="w-full bg-[#F5F7F4] border-none rounded-xl py-2 px-3 text-sm font-bold text-[#1A2E1A] focus:outline-none focus:ring-2 focus:ring-[#5A8F5A]"
-                >
-                  <option value="">Iedereen</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-2">Toewijzen Aan</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewTaskAssignedTo([])}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                      newTaskAssignedTo.length === 0 
+                        ? "bg-[#5A8F5A] text-white border-[#5A8F5A] shadow-sm" 
+                        : "bg-[#F5F7F4] text-stone-600 border-transparent hover:border-stone-200"
+                    )}
+                  >
+                    Iedereen
+                  </button>
+                  {users.map(u => {
+                    const isSelected = newTaskAssignedTo.includes(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setNewTaskAssignedTo(newTaskAssignedTo.filter(id => id !== u.id));
+                          } else {
+                            setNewTaskAssignedTo([...newTaskAssignedTo, u.id]);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border",
+                          isSelected 
+                            ? "bg-[#5A8F5A] text-white border-[#5A8F5A] shadow-sm" 
+                            : "bg-[#F5F7F4] text-stone-600 border-transparent hover:border-stone-200"
+                        )}
+                      >
+                        {u.avatar ? (
+                          <img src={u.avatar} alt="" className="w-4 h-4 rounded-full object-cover" />
+                        ) : (
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[8px]", isSelected ? "bg-white/20 text-white" : "bg-[#E8F0E8] text-[#5A8F5A]")}>
+                            {u.name?.charAt(0) || '?'}
+                          </div>
+                        )}
+                        <span>{u.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>

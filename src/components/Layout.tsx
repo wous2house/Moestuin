@@ -186,22 +186,38 @@ export default function Layout() {
                       const relatedCell = grid.find(c => c.id === log.cellId);
                       const cellName = relatedCell ? `${String.fromCharCode(65 + relatedCell.y)}${relatedCell.x + 1}` : '';
 
-                      const getPlantName = (id: any) => {
-                        if (!id) return 'iets';
-                        const searchId = Array.isArray(id) ? id[0] : id;
-                        const plant = plants.find(p => p.id === searchId);
-                        return plant?.name || 'iets';
+                      const getPlantName = (id: any, logRecord?: any) => {
+                        if (logRecord && logRecord.note) {
+                          // 1. Try "geplant als" extraction
+                          if (logRecord.note.includes(' geplant als')) {
+                            return logRecord.note.split(' geplant als')[0].replace('[', '').replace(']', '').trim();
+                          }
+
+                          // 2. Try "geoogst van" extraction
+                          if (logRecord.note.includes(' geoogst van')) {
+                            return logRecord.note.split(' geoogst van')[0].replace('[', '').replace(']', '').trim();
+                          }
+                        }
+
+                        // 3. Try ID lookup in store
+                        if (id) {
+                          const searchId = Array.isArray(id) ? id[0] : id;
+                          const plant = plants.find(p => p.id === searchId);
+                          if (plant) return plant.name;
+                        }
+
+                        return 'een gewas';
                       };
 
                       let actionText = `${logUser?.name} heeft actie '${log.type}' uitgevoerd`;
                       if (log.type === 'Planten') {
-                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} op ${cellName} geplant`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId, log)} op ${cellName} geplant`;
                       } else if (log.type === 'Oogst') {
-                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} geoogst van ${cellName}`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId, log)} geoogst van ${cellName}`;
                       } else if (log.type === 'Wateren') {
                          actionText = `${logUser?.name} heeft ${cellName} water gegeven`;
                       } else if (log.type === 'Verwijderd') {
-                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId)} verwijderd van ${cellName}`;
+                         actionText = `${logUser?.name} heeft ${getPlantName(log.plantId, log)} verwijderd van ${cellName}`;
                       } else if (log.type === 'Notitie') {
                          actionText = `${logUser?.name} heeft een notitie toegevoegd aan ${cellName}`;
                       }
