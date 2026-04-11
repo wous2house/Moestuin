@@ -1,9 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Workaround for process.env not existing in the browser
+let apiKey = "";
+try {
+  apiKey = (import.meta as any).env ? (import.meta as any).env.VITE_GEMINI_API_KEY : process.env.GEMINI_API_KEY;
+} catch (e) {
+  try {
+    apiKey = process.env.GEMINI_API_KEY;
+  } catch (e2) {}
+}
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export async function generatePlantData(plantName: string): Promise<any> {
   try {
+    if (!ai) throw new Error("API Key must be set when running in a browser");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Je bent een moestuin expert. Genereer een JSON object met de eigenschappen van de plant/groente/fruit: "${plantName}". Gebruik EXACT deze structuur (en geef alleen geldige JSON terug zonder markdown blokken):
@@ -57,6 +67,7 @@ export async function generatePlantData(plantName: string): Promise<any> {
 
 export async function calculateHarvestDate(plantName: string, plantType: string, sunPreference: string, dateStr: string): Promise<{ expectedHarvestDays: number, reason: string } | null> {
   try {
+    if (!ai) throw new Error("API Key must be set when running in a browser");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Je bent een moestuin expert. Bepaal het aantal verwachte groeidagen (days to harvest) voor het gewas "${plantName}".
@@ -83,6 +94,7 @@ Geef een JSON object terug met EXACT deze structuur (geen markdown blokken of ex
 
 export async function analyzePlantDisease(imageBase64: string, mimeType: string): Promise<string> {
   try {
+    if (!ai) throw new Error("API Key must be set when running in a browser");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -108,6 +120,7 @@ export async function analyzePlantDisease(imageBase64: string, mimeType: string)
 
 export async function generateRecipe(ingredients: string[]): Promise<string> {
   try {
+    if (!ai) throw new Error("API Key must be set when running in a browser");
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Je bent een chef-kok. Ik heb de volgende ingrediënten uit mijn moestuin geoogst: ${ingredients.join(', ')}. Bedenk een heerlijk, eenvoudig recept waar deze ingrediënten de hoofdrol spelen. Je mag basisvoorraad (zoals olie, zout, peper, bloem) toevoegen. Geef een titel, ingrediëntenlijst en bereidingswijze in het Nederlands.`,
