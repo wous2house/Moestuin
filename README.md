@@ -2,11 +2,15 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Garden & Task Manager App
 
-This contains everything you need to run your app locally.
+This is a React-based mobile web application for managing a vegetable garden and family tasks. Built with TypeScript, Vite, Tailwind CSS, and Pocketbase as the backend.
 
-View your app in AI Studio: https://ai.studio/apps/7d971bd9-fdca-417d-a9bc-81891e16ba77
+### Features
+- **Plants Index:** Browse and manage your plants.
+- **Harvests:** Keep track of your harvests.
+- **Tasks:** Manage garden and family tasks.
+- **Profiles:** User profiles for family members.
 
 ## Run Locally
 
@@ -15,6 +19,6 @@ View your app in AI Studio: https://ai.studio/apps/7d971bd9-fdca-417d-a9bc-81891
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Copy `.env.example` to `.env.local` and configure your keys.
 3. Run the app:
    `npm run dev`
