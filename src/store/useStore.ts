@@ -479,7 +479,20 @@ export const useStore = create<AppState>()(
   setGridCell: async (cellId, updates) => {
     try {
       const { pb } = await import('../lib/pb');
-      await pb.collection('grid').update(cellId, updates);
+
+      // Sanitize payload for PocketBase: replace null with "" for specific fields
+      const pbUpdates = { ...updates } as any;
+      const fieldsToClear = ['plantId', 'plantedDate', 'plantedBy', 'plantType', 'customDaysToHarvest'];
+      fieldsToClear.forEach(field => {
+        if (pbUpdates[field] === null) {
+          pbUpdates[field] = "";
+        }
+      });
+      if (typeof pbUpdates.customDaysToHarvest === 'number') {
+        pbUpdates.customDaysToHarvest = Math.round(pbUpdates.customDaysToHarvest);
+      }
+
+      await pb.collection('grid').update(cellId, pbUpdates);
       set((state) => ({
         grid: state.grid.map(c => c.id === cellId ? { ...c, ...updates } : c)
       }));
