@@ -213,11 +213,14 @@ export const useStore = create<AppState>()(
         return;
       }
 
-      const mappedPlants = plants.map((p: any) => ({
-        ...p,
-        imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getURL(p, p.imageUrl)) : undefined,
-        customEmojiUrl: p.expand?.custom_emoji?.image ? pb.files.getURL(p.expand.custom_emoji, p.expand.custom_emoji.image) : undefined
-      }));
+      const mappedPlants = plants.map((p: any) => {
+        const customEmojiRecord = Array.isArray(p.expand?.custom_emoji) ? p.expand.custom_emoji[0] : p.expand?.custom_emoji;
+        return {
+          ...p,
+          imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getURL(p, p.imageUrl)) : undefined,
+          customEmojiUrl: customEmojiRecord?.image ? pb.files.getURL(customEmojiRecord, customEmojiRecord.image) : undefined
+        };
+      });
 
       const mappedLogs = logs.map((l: any) => ({
         ...l,
