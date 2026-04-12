@@ -266,7 +266,13 @@ export default function Harvests() {
                     >
                       <div className="flex justify-between items-start mb-4 w-full">
                         <div className="flex items-center space-x-3">
-                          <span className="text-3xl">{plant?.icon || '🌱'}</span>
+                          <span className="text-3xl">
+                            {plant?.customEmojiUrl ? (
+                              <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                            ) : (
+                              plant?.icon || '🌱'
+                            )}
+                          </span>
                           <div>
                             <h3 className="text-lg font-bold text-[#1A2E1A] group-hover:text-[#5A8F5A] transition-colors">{harvest.plantName}</h3>
                             <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-wider text-stone-400 mt-1">
@@ -376,7 +382,13 @@ export default function Harvests() {
                         <tr key={harvest.id} className="hover:bg-stone-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-3">
-                              <span className="text-2xl">{plant?.icon || '🌱'}</span>
+                              <span className="text-2xl">
+                                {plant?.customEmojiUrl ? (
+                                  <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                                ) : (
+                                  plant?.icon || '🌱'
+                                )}
+                              </span>
                               <span className="font-bold text-[#1A2E1A]">{harvest.plantName}</span>
                             </div>
                           </td>
