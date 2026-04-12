@@ -16,7 +16,6 @@ export interface Plant {
   daysToHarvest: number;
   waterNeeds: 'Laag' | 'Gemiddeld' | 'Hoog';
   imageUrl?: string;
-  customEmojiUrl?: string;
   icon: string;
 }
 
@@ -198,7 +197,7 @@ export const useStore = create<AppState>()(
       if (!pb.authStore.isValid) return;
 
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
-        pb.collection('plants').getFullList({ expand: 'custom_emoji', requestKey: null }).catch(e => { console.error('plants error', e); return null; }),
+        pb.collection('plants').getFullList({ requestKey: null }).catch(e => { console.error('plants error', e); return null; }),
         pb.collection('grid').getFullList({ requestKey: null }).catch(e => { console.error('grid error', e); return null; }),
         pb.collection('tasks').getFullList({ requestKey: null }).catch(e => { console.error('tasks error', e); return null; }),
         pb.collection('families').getFullList({ requestKey: null }).catch(e => { console.error('families error', e); return null; }),
@@ -213,14 +212,10 @@ export const useStore = create<AppState>()(
         return;
       }
 
-      const mappedPlants = plants.map((p: any) => {
-        const customEmojiRecord = Array.isArray(p.expand?.custom_emoji) ? p.expand.custom_emoji[0] : p.expand?.custom_emoji;
-        return {
-          ...p,
-          imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getURL(p, p.imageUrl)) : undefined,
-          customEmojiUrl: customEmojiRecord?.image ? pb.files.getURL(customEmojiRecord, customEmojiRecord.image) : undefined
-        };
-      });
+      const mappedPlants = plants.map((p: any) => ({
+        ...p,
+        imageUrl: p.imageUrl ? (p.imageUrl.startsWith('http') ? p.imageUrl : pb.files.getURL(p, p.imageUrl)) : undefined
+      }));
 
       const mappedLogs = logs.map((l: any) => ({
         ...l,

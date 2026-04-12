@@ -548,13 +548,7 @@ export default function Harvests() {
                           >
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-3">
-                                <span className="text-2xl">
-                                  {plant.customEmojiUrl ? (
-                                    <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
-                                  ) : (
-                                    plant.icon
-                                  )}
-                                </span>
+                                <span className="text-2xl">{plant.icon}</span>
                                 <div>
                                   <span className="font-bold text-[#1A2E1A] block">{plant.name}</span>
                                   <span className="text-[10px] font-bold text-[#5A8F5A] uppercase">Vak {String.fromCharCode(65 + cell.y)}{cell.x + 1}</span>
@@ -584,13 +578,7 @@ export default function Harvests() {
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center space-x-3">
-                                      <span className="text-2xl opacity-70">
-                                        {plant.customEmojiUrl ? (
-                                          <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
-                                        ) : (
-                                          plant.icon
-                                        )}
-                                      </span>
+                                      <span className="text-2xl opacity-70">{plant.icon}</span>
                                       <div>
                                         <span className="font-bold text-[#1A2E1A] block opacity-70">{plant.name}</span>
                                         <span className="text-[10px] font-bold text-[#5A8F5A] uppercase">Vak {String.fromCharCode(65 + cell.y)}{cell.x + 1}</span>
