@@ -548,11 +548,21 @@ export default function Home() {
                         <CheckCircle2 className="w-4 h-4 text-[#5A8F5A]" />
                         <span className="text-xs font-bold text-[#5A8F5A]">Goede buren</span>
                       </div>
-                      <p className="text-xs text-stone-500 pl-6">
-                        {selectedPlant.goodNeighbors.map(id => {
+                      <p className="text-xs text-stone-500 pl-6 flex flex-wrap gap-x-2">
+                        {selectedPlant.goodNeighbors.length > 0 ? selectedPlant.goodNeighbors.map((id, index) => {
                           const p = getPlant(id);
-                          return p ? `${p.icon} ${p.name}` : null;
-                        }).filter(Boolean).join(', ') || 'Geen specifieke voorkeur'}
+                          if (!p) return null;
+                          return (
+                            <span key={id} className="inline-flex items-center">
+                              {p.customEmojiUrl ? (
+                                <img src={p.customEmojiUrl} alt={p.name} className="w-[1em] h-[1em] object-contain inline-block align-middle mr-1" />
+                              ) : (
+                                <span className="mr-1">{p.icon}</span>
+                              )}
+                              {p.name}{index < selectedPlant.goodNeighbors.length - 1 ? ',' : ''}
+                            </span>
+                          );
+                        }) : 'Geen specifieke voorkeur'}
                       </p>
                     </div>
                     <div>
@@ -560,11 +570,21 @@ export default function Home() {
                         <XCircle className="w-4 h-4 text-red-500" />
                         <span className="text-xs font-bold text-red-500">Slechte buren</span>
                       </div>
-                      <p className="text-xs text-stone-500 pl-6">
-                        {selectedPlant.badNeighbors.map(id => {
+                      <p className="text-xs text-stone-500 pl-6 flex flex-wrap gap-x-2">
+                        {selectedPlant.badNeighbors.length > 0 ? selectedPlant.badNeighbors.map((id, index) => {
                           const p = getPlant(id);
-                          return p ? `${p.icon} ${p.name}` : null;
-                        }).filter(Boolean).join(', ') || 'Geen specifieke afkeur'}
+                          if (!p) return null;
+                          return (
+                            <span key={id} className="inline-flex items-center">
+                              {p.customEmojiUrl ? (
+                                <img src={p.customEmojiUrl} alt={p.name} className="w-[1em] h-[1em] object-contain inline-block align-middle mr-1" />
+                              ) : (
+                                <span className="mr-1">{p.icon}</span>
+                              )}
+                              {p.name}{index < selectedPlant.badNeighbors.length - 1 ? ',' : ''}
+                            </span>
+                          );
+                        }) : 'Geen specifieke afkeur'}
                       </p>
                     </div>
                   </div>
@@ -609,7 +629,7 @@ export default function Home() {
                         <div className="flex justify-between items-start">
                           <p className="text-xs font-bold text-[#1A2E1A] flex items-center flex-wrap">
                             <span>{log.type}</span>
-                            {logPlant && <span className="ml-2 font-normal text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center"><span className="mr-1">{logPlant.icon}</span>{logPlant.name}</span>}
+                      {logPlant && <span className="ml-2 font-normal text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-md flex items-center"><span className="mr-1">{logPlant.customEmojiUrl ? <img src={logPlant.customEmojiUrl} alt={logPlant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" /> : logPlant.icon}</span>{logPlant.name}</span>}
                           </p>
                           <span className="text-[10px] text-stone-400 shrink-0 ml-2">{format(new Date(log.date), 'd MMM HH:mm', { locale: nl })}</span>
                         </div>
