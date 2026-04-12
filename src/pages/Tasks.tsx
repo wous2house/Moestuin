@@ -335,12 +335,23 @@ export default function Tasks() {
                   {viewingTask.relatedCellId && (
                     <div className="bg-[#F5F7F4] p-3 rounded-xl">
                       <h3 className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mb-1">Gekoppeld Gewas</h3>
-                      <p className="text-sm font-bold text-[#1A2E1A]">
+                      <p className="text-sm font-bold text-[#1A2E1A] flex items-center space-x-1">
                         {(() => {
                           const cell = grid.find(c => c.id === viewingTask.relatedCellId);
                           const plant = cell?.plantId ? plants.find(p => p.id === cell.plantId) : null;
-                          if (!plant || !cell) return 'Gewas niet gevonden';
-                          return `${plant.icon} ${plant.name} (Vak ${String.fromCharCode(65 + cell.y)}${cell.x + 1})`;
+                          if (!plant || !cell) return <span>Gewas niet gevonden</span>;
+                          return (
+                            <>
+                              {plant.customEmojiUrl ? (
+                                <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                              ) : (
+                                <span>{plant.icon}</span>
+                              )}
+                              <span>
+                                {plant.name} (Vak {String.fromCharCode(65 + cell.y)}{cell.x + 1})
+                              </span>
+                            </>
+                          );
                         })()}
                       </p>
                     </div>

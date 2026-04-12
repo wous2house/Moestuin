@@ -330,7 +330,13 @@ export default function Home() {
                   >
                     {plant ? (
                       <>
-                        <span className="text-2xl md:text-4xl mb-1">{plant.icon}</span>
+                        <span className="text-2xl md:text-4xl mb-1">
+                          {plant.customEmojiUrl ? (
+                            <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                          ) : (
+                            plant.icon
+                          )}
+                        </span>
                         <span className={cn(
                           "text-[10px] md:text-xs font-bold",
                           isSelected ? "text-[#5A8F5A]" : "text-stone-400"
@@ -401,7 +407,13 @@ export default function Home() {
                 <div>
                   <h3 className="text-2xl font-bold text-[#1A2E1A] flex items-center space-x-2">
                     <span>{selectedPlant.name}</span>
-                    <span className="text-xl">{selectedPlant.icon}</span>
+                    <span className="text-xl">
+                      {selectedPlant.customEmojiUrl ? (
+                        <img src={selectedPlant.customEmojiUrl} alt={selectedPlant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                      ) : (
+                        selectedPlant.icon
+                      )}
+                    </span>
                   </h3>
                   <p className="text-sm italic text-[#5A8F5A]">{selectedPlant.family}</p>
                 </div>
@@ -786,7 +798,14 @@ export default function Home() {
             </div>
             <h2 className="text-xl font-bold text-[#1A2E1A] mb-2">Gewas Verwijderen</h2>
             <p className="text-sm text-stone-500 mb-6">
-              Weet je zeker dat je de <span className="font-bold text-[#1A2E1A]">{selectedPlant.icon} {selectedPlant.name}</span> uit dit vak wilt verwijderen?
+              Weet je zeker dat je de <span className="font-bold text-[#1A2E1A]">
+                {selectedPlant.customEmojiUrl ? (
+                  <img src={selectedPlant.customEmojiUrl} alt={selectedPlant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle mr-1" />
+                ) : (
+                  <>{selectedPlant.icon} </>
+                )}
+                {selectedPlant.name}
+              </span> uit dit vak wilt verwijderen?
             </p>
             <div className="flex space-x-3">
               <button 
