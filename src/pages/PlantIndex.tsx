@@ -446,7 +446,13 @@ export default function PlantIndex() {
               <div key={plant.id} className="bg-white border border-stone-100 rounded-2xl p-4 shadow-sm flex flex-col h-full">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center space-x-3">
-                    <span className="text-3xl">{plant.icon}</span>
+                    <span className="text-3xl">
+                      {plant.customEmojiUrl ? (
+                        <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                      ) : (
+                        plant.icon
+                      )}
+                    </span>
                     <div>
                       <h3 className="text-lg font-bold text-[#1A2E1A]">{plant.name}</h3>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-[#5A8F5A] mt-0.5">{plant.family}</p>
@@ -515,7 +521,13 @@ export default function PlantIndex() {
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-[#E8F0E8] rounded-xl flex items-center justify-center">
-                        <span className="text-lg">{plant.icon}</span>
+                        <span className="text-lg">
+                          {plant.customEmojiUrl ? (
+                            <img src={plant.customEmojiUrl} alt={plant.name} className="w-[1em] h-[1em] object-contain inline-block align-middle" />
+                          ) : (
+                            plant.icon
+                          )}
+                        </span>
                       </div>
                       <div>
                         <h3 className="text-base font-bold text-[#1A2E1A]">{plant.name}</h3>
