@@ -312,9 +312,9 @@ export default function Home() {
             </div>
           )}
 
-          <div id="tuingrid" className="w-full overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar flex">
+          <div id="tuingrid" className="w-full overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 no-scrollbar">
             <div 
-              className="grid gap-3 md:gap-4 lg:gap-6 w-max min-w-full md:w-auto bg-[#E6D5B8] p-4 md:p-6 rounded-[2.5rem] border-8 border-[#C19A6B]/20 shadow-inner"
+              className="inline-grid gap-3 md:gap-4 lg:gap-6 md:grid min-w-full md:min-w-0 md:w-auto bg-[#E6D5B8] p-4 md:p-6 rounded-[2.5rem] border-8 border-[#C19A6B]/20 shadow-inner"
               style={{ gridTemplateColumns: `repeat(${gridWidth}, minmax(4.5rem, 1fr))` }}
             >
               {grid?.map(cell => {
