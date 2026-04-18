@@ -65,6 +65,7 @@ export interface User {
   role: 'Admin' | 'Lid';
   avatar?: string;
   familyId: string;
+  dismissedLogs?: string[];
 }
 
 export interface SeedInventory {
@@ -116,7 +117,6 @@ interface AppState {
   vacationEndDate?: string | null;
   pushNotifications: boolean;
   isNotificationsModalOpen: boolean;
-  dismissedLogs: Record<string, string[]>;
 
   // Actions
   setGridCell: (cellId: string, updates: Partial<GridCell>) => Promise<void>;
@@ -136,7 +136,7 @@ interface AppState {
   setPushNotifications: (active: boolean) => void;
   setIsNotificationsModalOpen: (open: boolean) => void;
   addLog: (log: Omit<GrowthLog, 'id'>) => Promise<void>;
-  dismissLog: (userId: string, logId: string) => void;
+  dismissLog: (userId: string, logId: string) => Promise<void>;
   addHarvest: (harvest: Omit<HarvestRecord, 'id'>) => Promise<void>;
   updateHarvest: (id: string, updates: Partial<HarvestRecord>) => Promise<void>;
   addFamily: (name: string) => Promise<string>;
@@ -191,7 +191,6 @@ export const useStore = create<AppState>()(
   vacationDelegateId: null,
   pushNotifications: false,
   isNotificationsModalOpen: false,
-  dismissedLogs: {},
 
   fetchDataFromDB: async () => {
     try {
@@ -345,7 +344,8 @@ export const useStore = create<AppState>()(
           name: u.name || u.username || u.email || 'Gebruiker', 
           role: u.role, 
           familyId: Array.isArray(u.familyId) ? u.familyId[0] : (u.familyId || ''), 
-          avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined 
+          avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined,
+          dismissedLogs: Array.isArray(u.dismissedLogs) ? u.dismissedLogs : []
         })) as any,
         seedBox: mappedSeeds as any,
         harvests: mappedHarvestsWithRelations,
@@ -845,18 +845,34 @@ export const useStore = create<AppState>()(
     }
   },
 
-  dismissLog: (userId, logId) => set((state) => {
-    const userDismissed = state.dismissedLogs?.[userId] || [];
-    if (!userDismissed.includes(logId)) {
-      return {
-        dismissedLogs: {
-          ...(state.dismissedLogs || {}),
-          [userId]: [...userDismissed, logId]
-        }
-      };
+  dismissLog: async (userId, logId) => {
+    const state = get();
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+
+    const currentDismissed = user.dismissedLogs || [];
+    if (!currentDismissed.includes(logId)) {
+      const newDismissed = [...currentDismissed, logId];
+
+      // Optimistic update
+      set((state) => ({
+        users: state.users.map(u => u.id === userId ? { ...u, dismissedLogs: newDismissed } : u),
+        currentUser: state.currentUser?.id === userId ? { ...state.currentUser, dismissedLogs: newDismissed } : state.currentUser
+      }));
+
+      try {
+        await pb.collection('users').update(userId, { dismissedLogs: newDismissed });
+      } catch (e: any) {
+        console.error("Failed to update dismissed logs in PB", e?.response || e);
+        // Revert optimistic update
+        set((state) => ({
+          users: state.users.map(u => u.id === userId ? { ...u, dismissedLogs: currentDismissed } : u),
+          currentUser: state.currentUser?.id === userId ? { ...state.currentUser, dismissedLogs: currentDismissed } : state.currentUser
+        }));
+        throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
+      }
     }
-    return state;
-  }),
+  },
 
   addHarvest: async (harvest) => {
     try {
@@ -1001,7 +1017,8 @@ export const useStore = create<AppState>()(
           name: user.name || user.username || user.email || 'Gebruiker',
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
-          avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined
+          avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined,
+          dismissedLogs: Array.isArray(user.dismissedLogs) ? user.dismissedLogs : []
         }
       }));
     } catch (e) {

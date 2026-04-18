@@ -8,13 +8,13 @@ import { cn } from '../lib/utils';
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function Harvests() {
-  const { harvests, users, families, plants, grid, updateHarvest, addHarvest, addLog, setGridCell, setIsNotificationsModalOpen, tasks, currentUser, logs, dismissedLogs } = useStore();
+  const { harvests, users, families, plants, grid, updateHarvest, addHarvest, addLog, setGridCell, setIsNotificationsModalOpen, tasks, currentUser, logs } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlantFamily, setFilterPlantFamily] = useState<string>('all');
   const [filterUserFamily, setFilterUserFamily] = useState<string>('all');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   
   const [selectedDistributionHarvest, setSelectedDistributionHarvest] = useState<HarvestRecord | null>(null);
