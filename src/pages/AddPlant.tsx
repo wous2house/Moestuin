@@ -117,9 +117,9 @@ export default function AddPlant() {
       });
 
       navigate('/');
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to save plant", err);
-      alert("Er is een fout opgetreden bij het opslaan van de plant. Probeer het opnieuw.");
+      alert(err.message || "Er is een fout opgetreden bij het opslaan van de plant. Probeer het opnieuw.");
     } finally {
       setIsSaving(false);
     }

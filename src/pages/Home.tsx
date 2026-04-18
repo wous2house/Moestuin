@@ -85,31 +85,39 @@ export default function Home() {
     }
   }
 
-  const handleWater = () => {
+  const handleWater = async () => {
     if (selectedCell && needsWater) {
-      addLog({
-        cellId: selectedCell.id,
-        plantId: selectedCell.plantId,
-        date: new Date().toISOString(),
-        type: 'Wateren',
-        note: 'Water gegeven',
-        userId: currentUser?.id || null
-      });
+      try {
+        await addLog({
+          cellId: selectedCell.id,
+          plantId: selectedCell.plantId,
+          date: new Date().toISOString(),
+          type: 'Wateren',
+          note: 'Water gegeven',
+          userId: currentUser?.id || null
+        });
+      } catch (e: any) {
+        alert(e.message);
+      }
     }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (selectedCell && noteText.trim()) {
-      addLog({
-        cellId: selectedCell.id,
-        plantId: selectedCell.plantId,
-        date: new Date().toISOString(),
-        type: 'Notitie',
-        note: noteText.trim(),
-        userId: currentUser?.id || null
-      });
-      setNoteText('');
-      setIsNoteModalOpen(false);
+      try {
+        await addLog({
+          cellId: selectedCell.id,
+          plantId: selectedCell.plantId,
+          date: new Date().toISOString(),
+          type: 'Notitie',
+          note: noteText.trim(),
+          userId: currentUser?.id || null
+        });
+        setNoteText('');
+        setIsNoteModalOpen(false);
+      } catch (e: any) {
+        alert(e.message);
+      }
     }
   };
 
@@ -117,40 +125,48 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (file && selectedCell) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        addLog({
-          cellId: selectedCell.id,
-          plantId: selectedCell.plantId,
-          date: new Date().toISOString(),
-          type: 'Notitie',
-          note: 'Foto toegevoegd',
-          userId: currentUser?.id || null,
-          imageUrl: reader.result as string
-        });
+      reader.onloadend = async () => {
+        try {
+          await addLog({
+            cellId: selectedCell.id,
+            plantId: selectedCell.plantId,
+            date: new Date().toISOString(),
+            type: 'Notitie',
+            note: 'Foto toegevoegd',
+            userId: currentUser?.id || null,
+            imageUrl: reader.result as string
+          });
+        } catch (err: any) {
+          alert(err.message);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleRemovePlant = () => {
+  const handleRemovePlant = async () => {
     if (selectedCell) {
-      addLog({
-        cellId: selectedCell.id,
-        plantId: selectedCell.plantId,
-        date: new Date().toISOString(),
-        type: 'Verwijderd',
-        note: 'Gewas verwijderd',
-        userId: currentUser?.id || null
-      });
-      const updates = {
-        plantId: null,
-        plantedDate: null,
-        plantedBy: null,
-        plantType: null,
-      };
-      setGridCell(selectedCell.id, updates);
-      setSelectedCell({ ...selectedCell, ...updates });
-      setIsDeleteConfirmOpen(false);
+      try {
+        await addLog({
+          cellId: selectedCell.id,
+          plantId: selectedCell.plantId,
+          date: new Date().toISOString(),
+          type: 'Verwijderd',
+          note: 'Gewas verwijderd',
+          userId: currentUser?.id || null
+        });
+        const updates = {
+          plantId: null,
+          plantedDate: null,
+          plantedBy: null,
+          plantType: null,
+        };
+        await setGridCell(selectedCell.id, updates);
+        setSelectedCell({ ...selectedCell, ...updates });
+        setIsDeleteConfirmOpen(false);
+      } catch (e: any) {
+        alert(e.message || "Er is een fout opgetreden.");
+      }
     }
   };
 
@@ -170,34 +186,38 @@ export default function Home() {
     differenceInDays(new Date(), harvestDate) >= -7
   ) : false;
 
-  const handleHarvest = () => {
+  const handleHarvest = async () => {
     if (selectedCell && selectedPlant && harvestQuantity) {
-      addHarvest({
-        plantId: selectedPlant.id,
-        plantName: selectedPlant.name,
-        date: new Date().toISOString(),
-        userId: currentUser?.id || null,
-        yieldQuantity: parseFloat(harvestQuantity),
-        yieldUnit: harvestUnit
-      });
-      addLog({
-        cellId: selectedCell.id,
-        plantId: selectedPlant.id,
-        date: new Date().toISOString(),
-        type: 'Oogst',
-        note: `Geoogst: ${harvestQuantity} ${harvestUnit}`,
-        userId: currentUser?.id || null
-      });
-      const updates = {
-        plantId: null,
-        plantedDate: null,
-        plantedBy: null,
-        plantType: null,
-      };
-      setGridCell(selectedCell.id, updates);
-      setIsHarvestModalOpen(false);
-      setHarvestQuantity('');
-      setSelectedCell({ ...selectedCell, ...updates });
+      try {
+        await addHarvest({
+          plantId: selectedPlant.id,
+          plantName: selectedPlant.name,
+          date: new Date().toISOString(),
+          userId: currentUser?.id || null,
+          yieldQuantity: parseFloat(harvestQuantity),
+          yieldUnit: harvestUnit
+        });
+        await addLog({
+          cellId: selectedCell.id,
+          plantId: selectedPlant.id,
+          date: new Date().toISOString(),
+          type: 'Oogst',
+          note: `Geoogst: ${harvestQuantity} ${harvestUnit}`,
+          userId: currentUser?.id || null
+        });
+        const updates = {
+          plantId: null,
+          plantedDate: null,
+          plantedBy: null,
+          plantType: null,
+        };
+        await setGridCell(selectedCell.id, updates);
+        setIsHarvestModalOpen(false);
+        setHarvestQuantity('');
+        setSelectedCell({ ...selectedCell, ...updates });
+      } catch (e: any) {
+        alert(e.message || "Er is een fout opgetreden.");
+      }
     }
   };
 
