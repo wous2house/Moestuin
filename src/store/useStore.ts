@@ -520,8 +520,16 @@ export const useStore = create<AppState>()(
       await pb.collection('grid').update(cellId, pbUpdates);
     } catch (e: any) {
       console.error("Failed to update grid cell in PB", e?.response || e);
-      // If needed, we could revert the optimistic update here,
-      // but fetchDataFromDB via real-time subscription usually handles sync.
+      // Revert optimistic update
+      set((state) => {
+        const originalCell = state.grid.find(c => c.id === cellId);
+        // We actually need the previous state to fully revert accurately, but we can just let realtime subscription re-sync
+        // or throw error for now so caller can handle.
+        return state;
+      });
+      // Fetch latest DB state to override the optimistic update
+      get().fetchDataFromDB();
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -567,9 +575,9 @@ export const useStore = create<AppState>()(
 
       set({ gridWidth: width, gridHeight: height, grid: newGrid });
       return { success: true };
-    } catch (e) {
-      console.error("Failed to update grid size in PB", e);
-      return { success: false, message: 'Fout bij opslaan van grid in database.' };
+    } catch (e: any) {
+      console.error("Failed to update grid size in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
   
@@ -580,11 +588,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         tasks: [...state.tasks, { ...task, id: record.id } as Task]
       }));
-    } catch (e) {
-      console.error("Failed to add task to PB", e);
-      set((state) => ({
-        tasks: [...state.tasks, { ...task, id: `t-${Date.now()}` } as Task]
-      }));
+    } catch (e: any) {
+      console.error("Failed to add task to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -595,11 +601,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
       }));
-    } catch (e) {
-      console.error("Failed to update task in PB", e);
-      set((state) => ({
-        tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
-      }));
+    } catch (e: any) {
+      console.error("Failed to update task in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -610,11 +614,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         tasks: state.tasks.filter(t => t.id !== id)
       }));
-    } catch (e) {
-      console.error("Failed to delete task from PB", e);
-      set((state) => ({
-        tasks: state.tasks.filter(t => t.id !== id)
-      }));
+    } catch (e: any) {
+      console.error("Failed to delete task from PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -626,13 +628,9 @@ export const useStore = create<AppState>()(
         plants: [...state.plants, { ...plant, id: record.id } as Plant]
       }));
       return record.id;
-    } catch (e) {
-      console.error("Failed to add plant to PB", e);
-      const mockId = `p-${Date.now()}`;
-      set((state) => ({
-        plants: [...state.plants, { ...plant, id: mockId } as Plant]
-      }));
-      return mockId;
+    } catch (e: any) {
+      console.error("Failed to add plant to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -643,11 +641,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         plants: state.plants.map(p => p.id === id ? { ...p, ...updates } : p)
       }));
-    } catch (e) {
-      console.error("Failed to update plant in PB", e);
-      set((state) => ({
-        plants: state.plants.map(p => p.id === id ? { ...p, ...updates } : p)
-      }));
+    } catch (e: any) {
+      console.error("Failed to update plant in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -660,13 +656,9 @@ export const useStore = create<AppState>()(
         grid: state.grid.map(c => c.plantId === id ? { ...c, plantId: null, plantType: null, plantedDate: null, plantedBy: null } : c),
         seedBox: state.seedBox.filter(s => s.plantId !== id)
       }));
-    } catch (e) {
-      console.error("Failed to delete plant from PB", e);
-      set((state) => ({
-        plants: state.plants.filter(p => p.id !== id),
-        grid: state.grid.map(c => c.plantId === id ? { ...c, plantId: null, plantType: null, plantedDate: null, plantedBy: null } : c),
-        seedBox: state.seedBox.filter(s => s.plantId !== id)
-      }));
+    } catch (e: any) {
+      console.error("Failed to delete plant from PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -700,20 +692,7 @@ export const useStore = create<AppState>()(
       set((state) => ({ seedBox: [...state.seedBox, { ...seed, id: record.id }] }));
     } catch (e: any) {
       console.error("Failed to add seed to PB", e?.response || e);
-      if (typeof window !== 'undefined' && e?.response?.data) {
-        alert("Oeps! PocketBase weigert de zaden. Controleer of de velden exact kloppen: " + JSON.stringify(e.response.data));
-      }
-      set((state) => {
-        const existing = state.seedBox.find(s => s.plantId === seed.plantId);
-        if (existing) {
-          return {
-            seedBox: state.seedBox.map(s => s.plantId === seed.plantId 
-              ? { ...s, quantity: s.quantity + seed.quantity, unit: seed.unit || s.unit } 
-              : s)
-          };
-        }
-        return { seedBox: [...state.seedBox, { ...seed, id: `s-${Date.now()}` }] };
-      });
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -724,11 +703,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
       }));
-    } catch (e) {
-      console.error("Failed to update seed in PB", e);
-      set((state) => ({
-        seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
-      }));
+    } catch (e: any) {
+      console.error("Failed to update seed in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -750,11 +727,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         seedBox: state.seedBox.filter(s => s.id !== idOrPlantId && s.plantId !== idOrPlantId)
       }));
-    } catch (e) {
-      console.error("Failed to delete seed from PB", e);
-      set((state) => ({
-        seedBox: state.seedBox.filter(s => s.id !== idOrPlantId && s.plantId !== idOrPlantId)
-      }));
+    } catch (e: any) {
+      console.error("Failed to delete seed from PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -799,41 +774,9 @@ export const useStore = create<AppState>()(
           ),
         }));
       }
-    } catch (e) {
-      console.error("Failed to toggle task in PB", e);
-      // Fallback optimistic
-      set((state) => {
-        const task = state.tasks.find(t => t.id === taskId);
-        if (!task) return state;
-
-        const hasRecurring = task.recurring || task.recurring_interval;
-        const interval = task.recurring?.interval || task.recurring_interval;
-        const unit = task.recurring?.unit || task.recurring_unit;
-
-        if (!task.completed && hasRecurring && task.dueDate) {
-          const newDate = new Date(task.dueDate);
-          if (unit === 'dagen') newDate.setDate(newDate.getDate() + interval);
-          else if (unit === 'weken') newDate.setDate(newDate.getDate() + interval * 7);
-          else if (unit === 'maanden') newDate.setMonth(newDate.getMonth() + interval);
-          
-          const newTask = {
-            ...task,
-            id: `t-${Date.now()}`,
-            dueDate: format(newDate, 'yyyy-MM-dd'),
-            completed: false
-          };
-          
-          return {
-            tasks: state.tasks.map(t => t.id === taskId ? { ...t, completed: true, recurring: null, recurring_interval: null, recurring_unit: "" } : t).concat(newTask)
-          };
-        }
-
-        return {
-          tasks: state.tasks.map((t) =>
-            t.id === taskId ? { ...t, completed: !t.completed } : t
-          ),
-        };
-      });
+    } catch (e: any) {
+      console.error("Failed to toggle task in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -910,11 +853,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         logs: [{ ...log, id: record.id, imageUrl: finalImageUrl } as GrowthLog, ...state.logs]
       }));
-    } catch (e) {
-      console.error("Failed to add log to PB", e);
-      set((state) => ({
-        logs: [{ ...log, id: `l-${Date.now()}` } as GrowthLog, ...state.logs]
-      }));
+    } catch (e: any) {
+      console.error("Failed to add log to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -956,11 +897,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         harvests: [{ ...harvest, id: record.id, imageUrl: finalImageUrl } as HarvestRecord, ...state.harvests]
       }));
-    } catch (e) {
-      console.error("Failed to add harvest to PB", e);
-      set((state) => ({
-        harvests: [{ ...harvest, id: `h-${Date.now()}` } as HarvestRecord, ...state.harvests]
-      }));
+    } catch (e: any) {
+      console.error("Failed to add harvest to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1014,22 +953,9 @@ export const useStore = create<AppState>()(
         return { families: newFamilies, users: newUsers, currentUser: newCurrentUser };
       });
       return id;
-    } catch (e) {
-      console.error("Failed to add family to PB", e);
-      const id = `f-${Date.now()}`;
-      set((state) => {
-        const newFamilies = [...state.families, { id, name }];
-        let newUsers = state.users;
-        let newCurrentUser = state.currentUser;
-        
-        if (state.currentUser) {
-          newUsers = state.users.map(u => u.id === state.currentUser!.id ? { ...u, familyId: id } : u);
-          newCurrentUser = { ...state.currentUser, familyId: id };
-        }
-        
-        return { families: newFamilies, users: newUsers, currentUser: newCurrentUser };
-      });
-      return id;
+    } catch (e: any) {
+      console.error("Failed to add family to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1040,11 +966,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         families: state.families.map(f => f.id === id ? { ...f, name } : f)
       }));
-    } catch (e) {
-      console.error("Failed to update family in PB", e);
-      set((state) => ({
-        families: state.families.map(f => f.id === id ? { ...f, name } : f)
-      }));
+    } catch (e: any) {
+      console.error("Failed to update family in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1068,16 +992,9 @@ export const useStore = create<AppState>()(
           currentUser: state.currentUser?.familyId === id ? { ...state.currentUser, familyId: defaultFamilyId } : state.currentUser
         };
       });
-    } catch (e) {
-      console.error("Failed to delete family from PB", e);
-      set((state) => {
-        const defaultFamilyId = state.families.find(f => f.id !== id)?.id || '';
-        return {
-          families: state.families.filter(f => f.id !== id),
-          users: state.users.map(u => u.familyId === id ? { ...u, familyId: defaultFamilyId } : u),
-          currentUser: state.currentUser?.familyId === id ? { ...state.currentUser, familyId: defaultFamilyId } : state.currentUser
-        };
-      });
+    } catch (e: any) {
+      console.error("Failed to delete family from PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1089,12 +1006,9 @@ export const useStore = create<AppState>()(
         users: state.users.map(u => u.id === userId ? { ...u, familyId } : u),
         currentUser: state.currentUser?.id === userId ? { ...state.currentUser, familyId } : state.currentUser
       }));
-    } catch (e) {
-      console.error("Failed to update user family in PB", e);
-      set((state) => ({
-        users: state.users.map(u => u.id === userId ? { ...u, familyId } : u),
-        currentUser: state.currentUser?.id === userId ? { ...state.currentUser, familyId } : state.currentUser
-      }));
+    } catch (e: any) {
+      console.error("Failed to update user family in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1132,11 +1046,9 @@ export const useStore = create<AppState>()(
       set((state) => ({
         users: [...state.users, { ...user, id: record.id } as User]
       }));
-    } catch (e) {
-      console.error("Failed to add user to PB", e);
-      set((state) => ({
-        users: [...state.users, { ...user, id: `u-${Date.now()}` } as User]
-      }));
+    } catch (e: any) {
+      console.error("Failed to add user to PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
@@ -1172,12 +1084,9 @@ export const useStore = create<AppState>()(
         users: state.users.map(u => u.id === id ? { ...u, ...finalUpdates } : u),
         currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...finalUpdates } : state.currentUser
       }));
-    } catch (e) {
-      console.error("Failed to update user in PB", e);
-      set((state) => ({
-        users: state.users.map(u => u.id === id ? { ...u, ...updates } : u),
-        currentUser: state.currentUser?.id === id ? { ...state.currentUser, ...updates } : state.currentUser
-      }));
+    } catch (e: any) {
+      console.error("Failed to update user in PB", e?.response || e);
+      throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
     }
   },
 
