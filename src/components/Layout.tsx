@@ -7,14 +7,14 @@ import { nl } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 
 export default function Layout() {
-  const { currentUser, tasks, logs, grid, users, plants, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissedLogs, dismissLog } = useStore();
+  const { currentUser, tasks, logs, grid, users, plants, isNotificationsModalOpen, setIsNotificationsModalOpen, dismissLog } = useStore();
   const navigate = useNavigate();
 
   const activeTasks = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))) || [];
   const activeTasksCount = activeTasks.length;
 
   const unreadLogs = logs
-    ?.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))
+    ?.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id)))
     ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   const notificationsCount = activeTasksCount + unreadLogs.length;

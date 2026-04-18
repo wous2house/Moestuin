@@ -7,12 +7,12 @@ import { generatePlantData } from '../lib/gemini';
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function PlantIndex() {
-  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, updateSeed, deleteSeed, currentUser, tasks, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
+  const { plants, seedBox, addPlant, updatePlant, deletePlant, addSeed, updateSeed, deleteSeed, currentUser, tasks, setIsNotificationsModalOpen, logs } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'index' | 'zaden'>('index');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   
   const [isAddingModalOpen, setIsAddingModalOpen] = useState(false);

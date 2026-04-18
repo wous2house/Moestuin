@@ -5,11 +5,11 @@ import { Bell, Settings, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function HeaderActions() {
-  const { currentUser, tasks, logs, dismissedLogs, families, setIsNotificationsModalOpen, logout } = useStore();
+  const { currentUser, tasks, logs, families, setIsNotificationsModalOpen, logout } = useStore();
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const activeTasksCount = tasks?.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || '')))?.length || 0;
-  const unreadLogsCount = logs?.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs?.[currentUser.id]?.includes(l.id)))?.length || 0;
+  const unreadLogsCount = logs?.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id)))?.length || 0;
   const notificationsCount = activeTasksCount + unreadLogsCount;
 
   return (

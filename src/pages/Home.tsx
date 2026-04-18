@@ -20,7 +20,7 @@ const getWeatherIcon = (code: number, className: string = "w-6 h-6") => {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen, dismissedLogs, families, logout } = useStore();
+  const { currentUser, users, grid, plants, setGridCell, gridWidth, gridHeight, updateGridSize, logs, addLog, tasks, addHarvest, setIsNotificationsModalOpen, families, logout } = useStore();
   const { weather, loading } = useWeather();
   const [selectedCell, setSelectedCell] = useState<GridCell | null>(grid[0] || null);
   
@@ -35,7 +35,7 @@ export default function Home() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   

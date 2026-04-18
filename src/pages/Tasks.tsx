@@ -8,7 +8,7 @@ import { nl } from 'date-fns/locale';
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function Tasks() {
-  const { tasks, toggleTask, users, grid, plants, addTask, updateTask, deleteTask, currentUser, setIsNotificationsModalOpen, logs, dismissedLogs } = useStore();
+  const { tasks, toggleTask, users, grid, plants, addTask, updateTask, deleteTask, currentUser, setIsNotificationsModalOpen, logs } = useStore();
   const [isAddingTaskOpen, setIsAddingTaskOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [viewingTask, setViewingTask] = useState<any | null>(null);
@@ -17,7 +17,7 @@ export default function Tasks() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [dateType, setDateType] = useState<'single' | 'period' | 'continuous' | 'recurring'>('single');

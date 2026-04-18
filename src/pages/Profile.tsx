@@ -7,12 +7,12 @@ import { format, addDays } from 'date-fns';
 import { HeaderActions } from '../components/HeaderActions';
 
 export default function Profile() {
-  const { currentUser, users, families, vacationMode, vacationDelegateId, activateVacationMode, deactivateVacationMode, pushNotifications, setPushNotifications, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData, tasks, setIsNotificationsModalOpen, logout, logs, dismissedLogs } = useStore();
+  const { currentUser, users, families, vacationMode, vacationDelegateId, activateVacationMode, deactivateVacationMode, pushNotifications, setPushNotifications, addFamily, updateFamily, deleteFamily, updateUserFamily, setCurrentUser, updateUser, importData, tasks, setIsNotificationsModalOpen, logout, logs } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dataInputRef = useRef<HTMLInputElement>(null);
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !dismissedLogs[currentUser.id]?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [isAddingFamily, setIsAddingFamily] = useState(false);
   const [newFamilyName, setNewFamilyName] = useState('');
