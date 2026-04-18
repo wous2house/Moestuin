@@ -68,7 +68,7 @@ export default function Login() {
         </form>
         
         <p className="text-[10px] font-bold uppercase tracking-widest text-stone-300 mt-10">
-          Versie {(window as any).__APP_VERSION__ || '1.3.81'}
+          Versie {(window as any).__APP_VERSION__ || '1.3.82'}
         </p>
       </div>
     </div>
