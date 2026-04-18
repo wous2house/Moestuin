@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { addDays, format } from 'date-fns';
+import { pb } from '../lib/pb';
 
 export type PlantFamily = 'Groente' | 'Fruit' | 'Zaden' | 'Bloemen' | 'Overig';
 export type SunPreference = 'Zon' | 'Halfschaduw' | 'Schaduw' | 'Duisternis';
@@ -194,7 +195,6 @@ export const useStore = create<AppState>()(
 
   fetchDataFromDB: async () => {
     try {
-      const { pb } = await import('../lib/pb');
       if (!pb.authStore.isValid) return;
 
       const [plants, grid, tasks, families, users, seedBox, harvests, logs] = await Promise.all([
@@ -358,7 +358,6 @@ export const useStore = create<AppState>()(
 
   initializeFromDB: async () => {
     try {
-      const { pb } = await import('../lib/pb');
 
       if (!pb.authStore.isValid && get().currentUser) {
         console.warn('PocketBase auth token is invalid or expired. Logging out.');
@@ -488,7 +487,6 @@ export const useStore = create<AppState>()(
     }));
 
     try {
-      const { pb } = await import('../lib/pb');
       const pbUpdates: any = { ...updates };
 
       // Only sanitize keys that are actually present in the updates object (Partial update)
@@ -547,7 +545,6 @@ export const useStore = create<AppState>()(
     }
 
     try {
-      const { pb } = await import('../lib/pb');
       let newGrid = state.grid.filter(c => c.x < width && c.y < height);
       
       const cellsToDelete = state.grid.filter(c => c.x >= width || c.y >= height);
@@ -583,7 +580,6 @@ export const useStore = create<AppState>()(
   
   addTask: async (task) => {
     try {
-      const { pb } = await import('../lib/pb');
       const record = await pb.collection('tasks').create(task);
       set((state) => ({
         tasks: [...state.tasks, { ...task, id: record.id } as Task]
@@ -596,7 +592,6 @@ export const useStore = create<AppState>()(
 
   updateTask: async (id, updates) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('tasks').update(id, updates);
       set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
@@ -609,7 +604,6 @@ export const useStore = create<AppState>()(
 
   deleteTask: async (id) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('tasks').delete(id);
       set((state) => ({
         tasks: state.tasks.filter(t => t.id !== id)
@@ -622,7 +616,6 @@ export const useStore = create<AppState>()(
 
   addPlant: async (plant) => {
     try {
-      const { pb } = await import('../lib/pb');
       const record = await pb.collection('plants').create(plant);
       set((state) => ({
         plants: [...state.plants, { ...plant, id: record.id } as Plant]
@@ -636,7 +629,6 @@ export const useStore = create<AppState>()(
 
   updatePlant: async (id, updates) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('plants').update(id, updates);
       set((state) => ({
         plants: state.plants.map(p => p.id === id ? { ...p, ...updates } : p)
@@ -649,7 +641,6 @@ export const useStore = create<AppState>()(
 
   deletePlant: async (id) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('plants').delete(id);
       set((state) => ({
         plants: state.plants.filter(p => p.id !== id),
@@ -664,7 +655,6 @@ export const useStore = create<AppState>()(
 
   addSeed: async (seed) => {
     try {
-      const { pb } = await import('../lib/pb');
       const state = get();
       const existing = state.seedBox.find(s => s.plantId === seed.plantId);
       
@@ -698,7 +688,6 @@ export const useStore = create<AppState>()(
 
   updateSeed: async (id, updates) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('seedBox').update(id, updates, { requestKey: null });
       set((state) => ({
         seedBox: state.seedBox.map(s => s.id === id ? { ...s, ...updates } : s)
@@ -711,7 +700,6 @@ export const useStore = create<AppState>()(
 
   deleteSeed: async (idOrPlantId) => {
     try {
-      const { pb } = await import('../lib/pb');
       const state = get();
       const seed = state.seedBox.find(s => s.id === idOrPlantId || s.plantId === idOrPlantId);
 
@@ -735,7 +723,6 @@ export const useStore = create<AppState>()(
 
   toggleTask: async (taskId) => {
     try {
-      const { pb } = await import('../lib/pb');
       const state = get();
       const task = state.tasks.find(t => t.id === taskId);
       if (!task) return;
@@ -830,7 +817,6 @@ export const useStore = create<AppState>()(
   
   addLog: async (log) => {
     try {
-      const { pb } = await import('../lib/pb');
       let payload: any = { ...log };
       
       if (log.imageUrl && log.imageUrl.startsWith('data:image')) {
@@ -874,7 +860,6 @@ export const useStore = create<AppState>()(
 
   addHarvest: async (harvest) => {
     try {
-      const { pb } = await import('../lib/pb');
       let payload: any = { ...harvest };
       
       if (harvest.imageUrl && harvest.imageUrl.startsWith('data:image')) {
@@ -905,7 +890,6 @@ export const useStore = create<AppState>()(
 
   updateHarvest: async (id, updates) => {
     try {
-      const { pb } = await import('../lib/pb');
       let payload: any = { ...updates };
       
       if (updates.imageUrl && updates.imageUrl.startsWith('data:image')) {
@@ -935,7 +919,6 @@ export const useStore = create<AppState>()(
 
   addFamily: async (name) => {
     try {
-      const { pb } = await import('../lib/pb');
       const record = await pb.collection('families').create({ name });
       const id = record.id;
       
@@ -961,7 +944,6 @@ export const useStore = create<AppState>()(
 
   updateFamily: async (id, name) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('families').update(id, { name });
       set((state) => ({
         families: state.families.map(f => f.id === id ? { ...f, name } : f)
@@ -974,7 +956,6 @@ export const useStore = create<AppState>()(
 
   deleteFamily: async (id) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('families').delete(id);
       
       set((state) => {
@@ -1000,7 +981,6 @@ export const useStore = create<AppState>()(
 
   updateUserFamily: async (userId, familyId) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('users').update(userId, { familyId });
       set((state) => ({
         users: state.users.map(u => u.id === userId ? { ...u, familyId } : u),
@@ -1014,7 +994,6 @@ export const useStore = create<AppState>()(
 
   setCurrentUser: async (userId) => {
     try {
-      const { pb } = await import('../lib/pb');
       const user = await pb.collection('users').getOne(userId);
       set((state) => ({
         currentUser: {
@@ -1037,7 +1016,6 @@ export const useStore = create<AppState>()(
 
   addUser: async (user) => {
     try {
-      const { pb } = await import('../lib/pb');
       const record = await pb.collection('users').create({
         ...user,
         emailVisibility: true,
@@ -1054,7 +1032,6 @@ export const useStore = create<AppState>()(
 
   updateUser: async (id, updates) => {
     try {
-      const { pb } = await import('../lib/pb');
       let payload: any = { ...updates };
       
       if (updates.avatar && updates.avatar.startsWith('data:image')) {
@@ -1092,7 +1069,6 @@ export const useStore = create<AppState>()(
 
   deleteUser: async (id) => {
     try {
-      const { pb } = await import('../lib/pb');
       await pb.collection('users').delete(id);
       set((state) => ({
         users: state.users.filter(u => u.id !== id),
