@@ -17,7 +17,7 @@ export default function Tasks() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
   const activeTasksCount = tasks.filter(t => !t.completed && (!t.assignedTo || t.assignedTo.length === 0 || t.assignedTo.includes(currentUser?.id || ''))).length;
-  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id))).length;
+  const unreadLogsCount = logs.filter(l => l.userId !== currentUser?.id && (!currentUser?.dismissedLogs?.includes(l.id))).length;
   const notificationsCount = activeTasksCount + unreadLogsCount;
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [dateType, setDateType] = useState<'single' | 'period' | 'continuous' | 'recurring'>('single');

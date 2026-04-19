@@ -345,7 +345,7 @@ export const useStore = create<AppState>()(
           role: u.role, 
           familyId: Array.isArray(u.familyId) ? u.familyId[0] : (u.familyId || ''), 
           avatar: u.avatar ? pb.files.getURL(u, u.avatar) : undefined,
-          dismissedLogs: Array.isArray(u.dismissedLogs) ? u.dismissedLogs : []
+          dismissedLogs: u.dismissedLogs || [],
         })) as any,
         seedBox: mappedSeeds as any,
         harvests: mappedHarvestsWithRelations,
@@ -850,9 +850,9 @@ export const useStore = create<AppState>()(
     const user = state.users.find(u => u.id === userId);
     if (!user) return;
 
-    const currentDismissed = user.dismissedLogs || [];
-    if (!currentDismissed.includes(logId)) {
-      const newDismissed = [...currentDismissed, logId];
+    const currentLogs = get().currentUser?.dismissedLogs || [];
+    if (!currentLogs.includes(logId)) {
+      const newDismissed = [...new Set([...currentLogs, logId])];
 
       // Optimistic update
       set((state) => ({
@@ -866,8 +866,8 @@ export const useStore = create<AppState>()(
         console.error("Failed to update dismissed logs in PB", e?.response || e);
         // Revert optimistic update
         set((state) => ({
-          users: state.users.map(u => u.id === userId ? { ...u, dismissedLogs: currentDismissed } : u),
-          currentUser: state.currentUser?.id === userId ? { ...state.currentUser, dismissedLogs: currentDismissed } : state.currentUser
+          users: state.users.map(u => u.id === userId ? { ...u, dismissedLogs: currentLogs } : u),
+          currentUser: state.currentUser?.id === userId ? { ...state.currentUser, dismissedLogs: currentLogs } : state.currentUser
         }));
         throw new Error(e?.response?.message || e.message || "Er is een onbekende fout opgetreden bij het opslaan in de database.");
       }
@@ -1018,7 +1018,7 @@ export const useStore = create<AppState>()(
           role: user.role as 'Admin' | 'Lid',
           familyId: user.familyId,
           avatar: user.avatar ? pb.files.getURL(user, user.avatar) : undefined,
-          dismissedLogs: Array.isArray(user.dismissedLogs) ? user.dismissedLogs : []
+          dismissedLogs: user.dismissedLogs || []
         }
       }));
     } catch (e) {

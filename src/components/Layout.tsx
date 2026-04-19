@@ -14,7 +14,7 @@ export default function Layout() {
   const activeTasksCount = activeTasks.length;
 
   const unreadLogs = logs
-    ?.filter(l => l.userId !== currentUser?.id && (!currentUser || !currentUser.dismissedLogs?.includes(l.id)))
+    ?.filter(l => l.userId !== currentUser?.id && (!currentUser?.dismissedLogs?.includes(l.id)))
     ?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   const notificationsCount = activeTasksCount + unreadLogs.length;
